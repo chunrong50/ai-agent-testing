@@ -15,6 +15,7 @@ class TokenCounter:
 
         if not text:
             return 0
+
         result=len(self.encoding.encode(text))
-        print(f"长度为：{result}")
+        # print(f"长度为：{result}")
         return result

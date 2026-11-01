@@ -32,10 +32,19 @@ def test_long_text(counter ):
 2.5 核心知识四：设计 Token 测试用例
 今天不要只写一个正常场景。你需要考虑输入边界、数据类型和异常情况。""" *10000
     size=counter.count(text)
-    assert size>20
+    assert size==950000
 
 @pytest.mark.parametrize("text",[123,[],{},None])
 def test_invalid_input(counter, text ):
     #检查非字符串
     with pytest.raises(TypeError,match="输入必须是字符串"):
         counter.count(text)
+
+def test_token_count_is_consistent(counter):
+    #验证统计结果稳定
+    text = "订单 A10086 支付状态：SUCCESS"
+
+    first = counter.count(text)
+    second = counter.count(text)
+
+    assert first == second

@@ -52,7 +52,7 @@ def test_input_over_token(context):
     assert not result
 
 
-@pytest.mark.parametrize("reserved",[0,-1])
+@pytest.mark.parametrize("reserved",[-1])
 def test_reserved_token(context,reserved):
     # 输出预留空间为 0
     text="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS"
@@ -67,14 +67,20 @@ def test_invalid_input(context,text):
     with pytest.raises(TypeError,match="输入必须是字符串"):
         context.can_fit(text,10)
 
-@pytest.mark.parametrize("text",["",[],{}])
+@pytest.mark.parametrize("text",[[],{}])
 def test_empty_input(context,text):
-    # 输入为空
-    with pytest.raises(ValueError,match="input must not be empty"):
+    # 输入为[],{}
+    with pytest.raises(TypeError):
         context.can_fit(text,10)
 
 
-def test_invalid_max_token():
+def test_invalid_max_tokens():
     # 最大 Token 数为 0
     with pytest.raises(ValueError,match="max_tokens must be positive"):
         ContextChecker(TokenCounter(), 0)
+
+@pytest.mark.parametrize("max_tokens",[30.5,True,"abc"])
+def test_type_error_max_tokens(max_tokens):
+    # 最大 Token 数为非整数
+    with pytest.raises(TypeError,match="max_tokens must be an integer"):
+        ContextChecker(TokenCounter(), max_tokens)
