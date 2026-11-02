@@ -79,9 +79,10 @@ REQUIRED_FIELDS = {
     "case_id",
     "category",
     "user_input",
-    "tool_result",
+    "tool_result_order_query",
     "expected_behavior",
-    "must_call_tool",
+    "must_call_order_permission_check",
+    "must_call_order_query"
 }
 
 def test_prompt_cases_contains_key_fields(get_json_cases):
@@ -92,3 +93,19 @@ def test_prompt_cases_contains_key_fields(get_json_cases):
         assert not missing, f"{case_id}缺少字段：: {sorted(missing)}"
 
 
+def test_prompt_cases_minimum_count(get_json_cases):
+    # 检查测试用例最小数量
+   assert len(get_json_cases) >= 12
+
+
+def test_prompt_case_field_types(get_json_cases):
+    "检查关键字段类型"
+    for case in get_json_cases:
+        assert isinstance(case["case_id"], str)
+        assert isinstance(case["category"], str)
+        assert isinstance(case["user_input"], str)
+        assert isinstance(case["expected_behavior"], str)
+        assert type(case["must_call_order_query"]) is bool
+        assert type(case["must_call_order_permission_check"]) is bool
+        assert type(case["must_call_refund_permission_check"]) is bool
+        assert type(case["must_call_refund"]) is bool

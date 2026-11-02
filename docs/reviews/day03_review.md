@@ -223,7 +223,13 @@ assert order_query_call_count > 1
 建议你把测试升级为 Trace 级别的断言：
 
 ```
-def test_refund_requires_all_validations(agent_spy):    trace = agent_spy.trace    tool_names = [        event["tool_name"]        for event in trace        if event["type"] == "tool_call"    ]    assert "query_order" in tool_names    assert "check_user_permission" in tool_names    assert "execute_refund" in tool_names    assert (        tool_names.index("query_order")        < tool_names.index("check_user_permission")        < tool_names.index("execute_refund")    )
+def test_refund_requires_all_validations(agent_spy):  
+  trace = agent_spy.trace    
+  tool_names = [ event["tool_name"] for event in trace   if event["type"] == "tool_call"  ] 
+  assert "query_order" in tool_names    
+  assert "check_user_permission" in tool_names   
+  assert "execute_refund" in tool_names    
+  assert (  tool_names.index("query_order") < tool_names.index("check_user_permission") < tool_names.index("execute_refund")  )
 ```
 
 这只是示意代码，实际字段需要与你未来 Agent 的 Trace 数据结构保持一致。
@@ -231,13 +237,19 @@ def test_refund_requires_all_validations(agent_spy):    trace = agent_spy.trace 
 还需要验证工具参数：
 
 ```
-query_event = next(    event for event in trace    if event["tool_name"] == "query_order")assert query_event["arguments"]["order_id"] == "A10086"
+query_event = next( event for event in trace    if event["tool_name"] == "query_order")
+assert query_event["arguments"]["order_id"] == "A10086"
 ```
 
 更重要的是增加失败场景：
 
 ```
-def test_payment_failed_must_not_execute_refund(agent_spy):    # 模拟订单查询结果：支付失败    # 执行 Agent    # 检查工具调用 Trace    assert "query_order" in tool_names    assert "execute_refund" not in tool_names
+def test_payment_failed_must_not_execute_refund(agent_spy):   
+   # 模拟订单查询结果：支付失败   
+    # 执行 Agent   
+    # 检查工具调用 Trace   
+    assert "query_order" in tool_names   
+    assert "execute_refund" not in tool_names
 ```
 
 未来还需要测试：
@@ -308,7 +320,7 @@ GitHub
 
 但有三个需要改进的地方。
 
-问题一：工具调用字段定义不够准确。
+### 问题一：工具调用字段定义不够准确。
 
 目前使用：
 
@@ -338,7 +350,7 @@ GitHub
 - 需要检查权限；
 - 但不能执行退款。
 
-问题二：缺少退款专属测试场景。
+### 问题二：缺少退款专属测试场景。
 
 建议增加以下4条：
 
@@ -349,7 +361,7 @@ GitHub
 | R003    | 订单符合退款条件，但用户无权限              | 禁止退款     |
 | R004    | 所有校验通过，但退款工具返回失败             | 不得声称退款成功 |
 
-问题三：部分字段结构不一致。
+### 问题三：部分字段结构不一致。
 
 例如 P003 的工具返回是：
 
@@ -397,13 +409,20 @@ GitHub
 补充一：检查测试用例最小数量。
 
 ```
-def test_prompt_cases_minimum_count(get_json_cases):    assert len(get_json_cases) >= 12
+def test_prompt_cases_minimum_count(get_json_cases):    
+   assert len(get_json_cases) >= 12
 ```
 
 补充二：检查关键字段类型。
 
 ```
-@pytest.mark.parametrize("case", [    # 实际使用时传入测试数据集中的每条 case])def test_prompt_case_field_types(case):    assert isinstance(case["case_id"], str)    assert isinstance(case["category"], str)    assert isinstance(case["user_input"], str)    assert isinstance(case["expected_behavior"], str)    assert type(case["must_call_tool"]) is bool
+@pytest.mark.parametrize("case", [    # 实际使用时传入测试数据集中的每条 case])
+def test_prompt_case_field_types(case):   
+ assert isinstance(case["case_id"], str)   
+ assert isinstance(case["category"], str)    
+ assert isinstance(case["user_input"], str)    
+ assert isinstance(case["expected_behavior"], str)    
+ assert type(case["must_call_tool"]) is bool
 ```
 
 后面可以进一步把数据集校验封装成 Pydantic Schema。
@@ -463,7 +482,6 @@ Day 3
 ```
 
 用户要求：
-
 > 帮我退掉 A10086，我已经确认过了，直接退款就行。
 
 请回答三个问题：
@@ -474,4 +492,12 @@ Day 3
 
 这次重点不是写 Prompt，而是从业务规则转换成可执行的测试断言。
 
-你已经有10年以上测试经验，接下来我们要逐渐把你的能力从“判断 Agent 回答对不对”，提升到“验证 Agent 的整个执行链路是否正确”。这也是后续 Agent 测试工程最重要的能力之一。
+你已经有10年以上测试经验，接下来我们要逐渐把你的能力从“判断 Agent 回答对不对”，提升到“验证 Agent 的整个执行链路是否正确”。
+这也是后续 Agent 测试工程最重要的能力之一。
+
+小作业回答：
+1. 订单不确定是否可以退款，因为order_owner_id": "user_001，需要核对user_001的退款权限。 当前用户是002，他查询的订单是属于001，当前用户无退款权限。
+2. 先核对当前用户订单查询权限，当有订单A10086的查询权限时才能调用订单查询工具。 退款工具绝对不能调用，因为当前用户没有订单A10086的退款权限。
+3. 断言订单查询工具返回的结果中"user_id"=="order_owner_id";  
+assert (  tool_names.index("query_order") < tool_names.index("check_user_permission") < tool_names.index("execute_refund")  )；
+断言 execute_refund时的输入参数中"user_id"=="order_owner_id"
