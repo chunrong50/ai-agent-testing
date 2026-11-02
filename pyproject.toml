@@ -2,4 +2,7 @@
 name = "ai-agent-testing"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "pytest>=9.2.0",
+    "tiktoken>=0.14.0",
+]

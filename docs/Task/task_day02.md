@@ -54,34 +54,7 @@
 这样你验证的就不只是某个字段，而是整条信息传递链路。
 
 
-第四部分：Day 2 作业与验收标准
-Day 2 必须交付
-100 分
 
-交付物	分值
-TokenCounter 实现	20
-TokenCounter 自动化测试	20
-ContextChecker 实现	20
-上下文边界测试	20
-电商 Agent 场景分析	20
-
-
-验收通过标准： 80 分及以上，且没有关键业务逻辑错误。
-
-建议今天投入 6 小时：
-- 1 小时：理解 Token 和 Context Window。
-- 1 小时：完成 TokenCounter。
-- 1 小时：完成 Pytest 自动化测试。
-- 1.5 小时：实现 ContextChecker 和边界测试。
-- 1 小时：完成电商 Agent 场景分析。
-- 0.5 小时：整理代码和测试报告。
-今天的提交方式
-完成后，把以下内容发给我：
-1. Day 1 的代码、测试运行结果和场景分析答案（用于补做验收）。
-2. Day 2 的 token_counter.py。
-3. Day 2 的 context_checker.py。
-4. 对应的 Pytest 测试代码和运行结果。
-5. 电商 Agent 历史对话截断场景分析。
 
 ## 进阶思考：
 
@@ -92,3 +65,17 @@ ContextChecker 实现	20
 模型的Context Window最大为8000Tokens，其中Context Window包含了输入内容、历史记录、用户输入、工具调用输入和输出、模型预留输出。
 如果输入内容有 7,000 Tokens，预留输出 2,000 Tokens， 在不考虑工具调用的token、历史记录、系统提示词、系统限制的情况下，目前总共的Context Window：7000+2000=9000 ，9000token 已经超出了模型的最大窗口量，
 因此，当上下文窗口大约模型的最大上下文窗口时，模型会进行截断，导致模型回答出现幻觉，回答错误或者偏离事实，出现编制的可能。
+
+
+## 额外给你一个进阶思考题：
+
+假设电商 Agent 的模型 Context Window 是 8000 Tokens：
+- System Prompt：1000 Tokens
+- 历史对话：3000 Tokens
+- 当前用户输入：1000 Tokens
+- Tool 定义：1000 Tokens
+- Tool 返回结果：1000 Tokens
+- 预留模型输出：1500 Tokens
+你写的 ContextChecker 如果只检查当前用户输入的 1000 Tokens，会不会误判请求可以发送？
+答： 只检查用户输入的 1000 Token，1000＜8000，会被判没有超过Context Window。实际还需要考虑System Prompt、历史对话、Tool 定义、Tool 返回结果、预留模型输出，
+这些总共加起来，1000+3000+1000+1000+1000+15000=8500 >8000, 会出现超出Context Window，导致模型无法正确回答问题。

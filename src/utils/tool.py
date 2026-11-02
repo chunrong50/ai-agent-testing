@@ -1,0 +1,13 @@
+
+
+class MockOrderTool:
+
+    def __init__(self, response):
+        self.response = response
+        self.call_count = 0
+        self.called_order_id = None
+
+    def query_order(self, order_id):
+        self.call_count += 1
+        self.called_order_id = order_id
+        return self.response

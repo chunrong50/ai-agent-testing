@@ -2,6 +2,8 @@ import pytest
 
 from src.utils.context_checker import ContextChecker
 from src.utils.token_counter import TokenCounter
+from tests.conftest import FakeTokenCounter
+
 
 #测试LLM的上下文窗口大小"
 
@@ -21,57 +23,60 @@ cases:
 reserved_tokens 为负数。
 max_tokens 为 0 或负数。
 """
+#  使用FakeTokenCounter 来代替具体的文本，
+# text="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS,A10086 支付状态：SUCCESS," # token=30
+# text1="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS,A10086 支付状态：SUCCESS,ab" # token=31
+# text2="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS"  # token=20
+# text3= "订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS.." # token=21
 
-text="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS,A10086 支付状态：SUCCESS," # token=30
-text1="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS,A10086 支付状态：SUCCESS,ab" # token=31
-@pytest.mark.parametrize("text",[text,text1])
-def test_input_token_equals_max(context,text):
-    # 输入 Token 数量刚好达到上限/ 比上限多1。max=30
-    result=context.can_fit(text,10)
+
+@pytest.mark.parametrize("inputToken,reserved",[(30,0),(20,10),(29,1),(1,29)])
+def test_normal_context(inputToken,reserved):
+    # 输入和输出预留总量刚好等于上限。inputToken+reserved=20+10=30 ,inputToken+reserved=30+0=30 等
+    context=ContextChecker(FakeTokenCounter(inputToken),30)
+    result=context.can_fit("订单查询",reserved)
     # print(result)
-    assert isinstance(result,bool)
-    assert not result
-
-
-def test_normal_token(context):
-    # 输入和输出预留总量刚好等于上限。text:20+reserved 10=30
-    text="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS"
-    result=context.can_fit(text,10)
-    # print(result)
-
     assert isinstance(result,bool)
     assert result
 
-def test_input_over_token(context):
-    # 输入和输出预留总量超过上限 1
-    text="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS.."
-    result=context.can_fit(text,10)
-    # print(result)
+
+
+@pytest.mark.parametrize("inputToken,reserved",[(30,1),(31,0),(21,10)])
+def test_over_context(context,inputToken,reserved):
+    # 输入和输出预留总量超过上限,30+1,31+0,21+10
+    context = ContextChecker(FakeTokenCounter(inputToken), 30)
+    result=context.can_fit("查询订单",reserved)
 
     assert isinstance(result,bool)
     assert not result
 
+def test_empty_text_can_fit():
+    checker = ContextChecker(FakeTokenCounter(0), 30)
+
+    assert checker.can_fit("", 0) is True
+
 
 @pytest.mark.parametrize("reserved",[-1])
-def test_reserved_token(context,reserved):
-    # 输出预留空间为 0
-    text="订单 A10086 支付状态：SUCCESS订单 A10086 支付状态：SUCCESS"
+def test_invalid_reserved_token(context,reserved):
+    # 输出预留空间为 -1
+    with pytest.raises(ValueError,match="reserved_tokens must be non-negative"):
+        context.can_fit("查询订单",reserved)
 
-    with pytest.raises(ValueError,match="reserved_tokens must be positive"):
-        context.can_fit(text,reserved)
+@pytest.mark.parametrize("reserved",["abc",12.5,"10",{},None,True,False])
+def test_invalid_type_reserved_token(context,reserved):
+    # 输出预留空间为非整数类型
+    with pytest.raises(TypeError,match="reserved_tokens must be integer"):
+        context.can_fit("查询订单",reserved)
 
 
-@pytest.mark.parametrize("text",[123])
+
+
+@pytest.mark.parametrize("text",[123,[],{}])
 def test_invalid_input(context,text):
-    # 输入为其他类型
+    # 输入为非文本类型，是其他类型,123,[],{}
     with pytest.raises(TypeError,match="输入必须是字符串"):
         context.can_fit(text,10)
 
-@pytest.mark.parametrize("text",[[],{}])
-def test_empty_input(context,text):
-    # 输入为[],{}
-    with pytest.raises(TypeError):
-        context.can_fit(text,10)
 
 
 def test_invalid_max_tokens():

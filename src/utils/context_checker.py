@@ -13,11 +13,11 @@ class ContextChecker:
 
     def can_fit(self,text:str,reserved_tokens=0):
         """输入 Token 数量 + 预留输出 Token 数量 不能超过最大上下文容量。"""
-        if not isinstance(reserved_tokens,int):
-            raise TypeError("reserved_tokens must be an integer")
+        if type(reserved_tokens) is not int :
+            raise TypeError("reserved_tokens must be integer")
 
         if reserved_tokens < 0 :
-            raise ValueError("reserved_tokens must be positive")
+            raise ValueError("reserved_tokens must be non-negative")
 
 
         input_tokens = self.token_counter.count(text)

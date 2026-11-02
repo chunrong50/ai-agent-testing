@@ -19,3 +19,4 @@ class TokenCounter:
         result=len(self.encoding.encode(text))
         # print(f"长度为：{result}")
         return result
+
