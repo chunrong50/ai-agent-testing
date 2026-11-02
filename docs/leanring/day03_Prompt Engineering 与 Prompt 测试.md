@@ -418,7 +418,20 @@ ai-agent-testing/
 创建 `tests/week01/test_prompt_rules.py`：
 
 ```
-from pathlib import Pathimport pytestPROMPT_PATH = (    Path(__file__).resolve().parents[2]    / "prompts"    / "payment_agent_system.txt")@pytest.fixture(scope="module")def system_prompt():    return PROMPT_PATH.read_text(encoding="utf-8")@pytest.mark.parametrize(    "rule",    [        "必须调用订单查询工具",        "不允许在没有查询订单系统的情况下判断支付状态",        "不允许编造订单号、支付状态、支付金额",        "如果缺少订单号，必须先向用户询问",        "不允许重复发起已经完成的退款"    ])def test_prompt_contains_business_rules(system_prompt, rule):    assert rule in system_prompt
+from pathlib import Pathimport
+ 
+ pytestPROMPT_PATH = (    Path(__file__).resolve().parents[2]    / "prompts"    / "payment_agent_system.txt")
+ 
+ @pytest.fixture(scope="module")def system_prompt():    
+ return PROMPT_PATH.read_text(encoding="utf-8")
+ 
+ @pytest.mark.parametrize(    "rule",   
+  [        "必须调用订单查询工具",        
+  "不允许在没有查询订单系统的情况下判断支付状态",       
+   "不允许编造订单号、支付状态、支付金额",      
+     "如果缺少订单号，必须先向用户询问",      
+       "不允许重复发起已经完成的退款"    ])
+ def test_prompt_contains_business_rules(system_prompt, rule):    assert rule in system_prompt
 ```
 
 这个测试可以验证 Prompt 文件是否包含指定规则。
