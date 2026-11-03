@@ -67,3 +67,10 @@ Temperature 影响模型输出的随机性。
 一般来说，较低的 Temperature 倾向于更稳定的输出；较高的 Temperature 可能带来更多样化的输出。
 
 但它不等于正确率，也不保证低 Temperature 下的结果绝对一致。
+
+# 4个环节的测试映射
+环节	测试对象	关键断言
+Planning	决策	是否选择正确工具
+Tool Calling	工具调用	名称、参数、调用次数
+Observation	工具结果	是否正确处理返回
+Reflection	后续决策	是否继续、重试或终止
