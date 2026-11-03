@@ -759,3 +759,704 @@ day01-03 档案.md
 你完成第一阶段后，把代码和 pytest 结果发给我。我会按照高级测试开发工程师的标准进行逐文件、逐测试用例评审，不会因为测试通过就轻易给出高分。
 
 Day 4 正式开始。今天的目标不是写出一个能聊天的 Agent，而是写出一个能够被测试、被追踪、被验证的 Agent。
+
+## 具体的类不太理解，再一次咨询
+可以。我们今天先暂停复杂的 Pytest 测试，专门把 Agent 最小执行框架的底层机制 搞清楚。
+
+你现在不理解底层机制是正常的，因为 Day 1～Day 3 学习的是 LLM、Token、Prompt，今天第一次把这些知识组合成一个具有执行能力的 Agent。
+
+我不会直接给你一堆复杂代码让你照抄，而是按照一个高级测试开发工程师应该理解的方式，逐个解释类的职责、调用关系和完整执行过程。
+
+今天我们实现 5 个文件：
+
+| 文件                   | 职责                |
+| -------------------- | ----------------- |
+| `state.py`           | 保存 Agent 执行过程中的状态 |
+| `agent.py`           | 控制 Agent 的执行流程    |
+| `order_tool.py`      | 查询订单              |
+| `permission_tool.py` | 验证用户权限            |
+| `refund_tool.py`     | 执行退款              |
+
+先统一一下文件名：你写的 `order_too.py`、`premission_tool.py`，建议分别使用 `order_tool.py`、`permission_tool.py`。
+
+## 一、先理解：Agent 到底是什么？
+
+先看一个真实业务问题：
+
+用户说：
+
+> 帮我查询一下订单 ORD1001 的支付状态。
+
+一个最小 Agent 可以理解为一个任务执行器：
+
+1. 接收用户请求。
+2. 判断用户想做什么。
+3. 决定使用哪个工具。
+4. 调用工具。
+5. 获取工具返回结果。
+6. 根据结果生成回答。
+7. 保存整个执行过程。
+
+注意：这里的 Agent 并不等于 LLM。
+
+今天我们先不接入大模型，用 Python 规则模拟 Planning。这样可以把 Agent 的执行机制单独研究清楚。
+
+### 1.1 五个类之间的关系
+
+![img.png](支付Agent的流程.png)
+用户请求
+
+查询订单 / 申请退款
+
+PaymentAgent
+
+负责规划、调度、执行和处理结果
+
+OrderTool
+
+查询订单
+
+PermissionTool
+
+权限校验
+
+RefundTool
+
+执行退款
+
+AgentState
+
+这里有一个很重要的设计原则：
+
+- Agent 决定什么时候调用工具。
+- Tool 负责具体业务操作。
+- State 负责保存执行状态。
+
+不要把所有业务逻辑都写进 Agent。
+
+## 二、先建立项目结构
+
+按照你现有的项目结构，在 `src` 下创建：
+
+```
+src/
+├── agent/
+│   ├── __init__.py
+│   ├── state.py
+│   └── agent.py
+│
+└── tools/
+    ├── __init__.py
+    ├── order_tool.py
+    ├── permission_tool.py
+    └── refund_tool.py
+```
+
+今天先不引入任何第三方 Agent 框架。
+
+我们使用：
+
+- Python `dataclass`：管理状态。
+- Python `re`：识别订单号。
+- Python 类：封装工具。
+- Python 字典：模拟订单数据库。
+- Pytest：后续验证执行链路。
+
+下面代码按 Python 3.10+ 编写。
+
+## 三、实现第一个类：AgentState
+
+文件：`src/agent/state.py`
+
+### 3.1 先理解为什么需要 State
+
+假设用户发起退款：
+
+```
+用户：帮我退掉订单 ORD1001
+```
+
+Agent 执行过程中，需要记住：
+
+```
+当前用户：U001
+当前订单：ORD1001
+订单金额：199
+支付状态：PAID
+用户是否有权限：True
+退款是否成功：True
+最终回答：退款成功
+```
+
+这些数据不能全部依赖局部变量，也不能依赖全局变量。
+
+因此，我们需要一个专门的对象保存一次 Agent 运行过程中的数据。
+
+### 3.2 完整代码
+
+```
+# src/agent/state.pyfrom dataclasses import dataclass, fieldfrom typing import Any, Optional@dataclassclass AgentState:    """保存一次 Agent 执行过程中的状态。"""    user_id: str    user_input: str    order_id: Optional[str] = None    order_data: Optional[dict[str, Any]] = None    # 记录实际发生的工具调用    tool_calls: list[dict[str, Any]] = field(default_factory=list)    # 记录完整执行轨迹    trace: list[dict[str, Any]] = field(default_factory=list)    final_response: Optional[str] = None    # running / success / failed    status: str = "running"    error: Optional[str] = None    def add_tool_call(        self,        tool_name: str,        arguments: dict[str, Any]    ) -> None:        """记录一次工具调用。"""        self.tool_calls.append({            "tool_name": tool_name,            "arguments": arguments.copy()        })    def add_trace(        self,        step_type: str,        **details: Any    ) -> None:        """记录一次执行轨迹。"""        self.trace.append({            "step": len(self.trace) + 1,            "type": step_type,            **details        })
+```
+
+### 3.3 重点解释
+
+知识点 A：为什么使用 dataclass？
+
+普通写法：
+
+```
+class AgentState:    def __init__(self, user_id, user_input):        self.user_id = user_id        self.user_input = user_input
+```
+
+使用 dataclass：
+
+```
+@dataclassclass AgentState:    user_id: str    user_input: str
+```
+
+Python 自动帮我们生成初始化方法等基础功能。
+
+知识点 B：为什么使用 field(default_factory=list)？
+
+这是一个很重要的 Python 测试知识点。
+
+不要这样写：
+
+```
+tool_calls: list = []
+```
+
+因为多个对象可能共享同一个可变列表。
+
+正确写法：
+
+```
+tool_calls: list = field(default_factory=list)
+```
+
+每次创建 AgentState，都会创建一个新的列表。
+
+知识点 C：为什么要有 trace 和 tool_calls 两个字段？
+
+两者目的不同：
+
+| 字段         | 用途                                                |
+| ---------- | ------------------------------------------------- |
+| tool_calls | 记录实际调用了什么工具、传了什么参数                                |
+| trace      | 记录完整执行过程，包括 Planning、Tool Calling、Observation、异常等 |
+
+后面我们会利用这两个字段设计测试断言。
+
+## 四、实现第二个类：OrderTool
+
+文件：`src/tools/order_tool.py`
+
+### 4.1 OrderTool 的职责
+
+OrderTool 只负责查询订单。
+
+它不负责：
+
+- 判断用户是否有退款权限。
+- 判断是否应该退款。
+- 执行退款。
+- 生成 Agent 的最终回答。
+
+这些职责应该由其他组件承担。
+
+### 4.2 完整代码
+
+```
+# src/tools/order_tool.pyfrom copy import deepcopyfrom typing import OptionalDEFAULT_ORDERS = {    "ORD1001": {        "order_id": "ORD1001",        "user_id": "U001",        "amount": 199.00,        "payment_status": "PAID",        "refund_status": "NOT_REFUNDED"    },    "ORD1002": {        "order_id": "ORD1002",        "user_id": "U002",        "amount": 299.00,        "payment_status": "UNPAID",        "refund_status": "NOT_REFUNDED"    },    "ORD1003": {        "order_id": "ORD1003",        "user_id": "U001",        "amount": 399.00,        "payment_status": "PAID",        "refund_status": "REFUNDED"    },    "ORD1004": {        "order_id": "ORD1004",        "user_id": "U003",        "amount": 599.00,        "payment_status": "PAID",        "refund_status": "NOT_REFUNDED"    }
+```
+
+### 4.3 这里有一个重要设计
+
+为什么使用：
+
+```
+deepcopy(order)
+```
+
+而不是：
+
+```
+return order
+```
+
+因为如果直接返回原始字典：
+
+```
+result = order_tool.query_order("ORD1001")result["data"]["payment_status"] = "UNPAID"
+```
+
+可能会直接修改订单数据库中的数据。
+
+这会导致测试之间互相污染。
+
+这是自动化测试中非常典型的数据隔离问题。
+
+## 五、实现第三个类：PermissionTool
+
+文件：`src/tools/permission_tool.py`
+
+### 5.1 为什么需要独立的权限工具？
+
+考虑下面的情况：
+
+用户 U001：
+
+```
+帮我退掉订单 ORD1004
+```
+
+但是：
+
+```
+ORD1004 属于 U003
+```
+
+即使订单已经支付成功，也不能允许 U001 退款。
+
+因此，退款之前必须进行权限验证。
+
+这里需要区分：
+
+- OrderTool：订单是否存在？
+- PermissionTool：当前用户是否有权限操作订单？
+
+这是两个不同的业务问题。
+
+### 5.2 完整代码
+
+```
+# src/tools/permission_tool.pyclass PermissionTool:    """用户订单操作权限校验工具。"""    def check_permission(        self,        user_id: str,        order: dict    ) -> dict:        """验证用户是否有权操作指定订单。"""        if not isinstance(user_id, str) or not user_id.strip():            return {                "success": False,                "allowed": False,                "error": "用户ID不能为空"            }        if not isinstance(order, dict):            return {                "success": False,                "allowed": False,                "error": "订单数据无效"            }        order_user_id = order.get("user_id")        if not order_user_id:            return {                "success": False,                "allowed": False,                "error": "订单缺少所属用户信息"            }
+```
+
+### 5.3 运行效果
+
+```
+permission_tool = PermissionTool()order = {    "order_id": "ORD1004",    "user_id": "U003"}result = permission_tool.check_permission(    user_id="U001",    order=order)print(result)
+```
+
+预期：
+
+```
+{    "success": True,    "allowed": False,    "user_id": "U001",    "order_user_id": "U003",    "reason": "用户无权操作该订单"}
+```
+
+注意：
+
+`success=True` 和 `allowed=False` 并不矛盾。
+
+前者表示权限校验工具正常执行，后者表示用户没有权限。
+
+这是后续测试中非常重要的一个区别。
+
+## 六、实现第四个类：RefundTool
+
+文件：`src/tools/refund_tool.py`
+
+### 6.1 RefundTool 的职责
+
+RefundTool 真正执行退款。
+
+这里有一个非常重要的架构原则：
+
+不能因为 Agent 判断可以退款，就直接认为退款一定安全。
+
+退款工具本身还必须执行服务端业务校验。
+
+例如：
+
+| 校验项        | 要求               |
+| ---------- | ---------------- |
+| 订单是否存在     | 必须存在             |
+| 用户是否为订单所属人 | 必须一致             |
+| 支付状态       | 必须是 PAID         |
+| 退款状态       | 必须是 NOT_REFUNDED |
+| 重复退款       | 必须拒绝             |
+
+这样即使 Agent 漏掉了权限检查，底层退款服务也不能直接执行越权退款。
+
+### 6.2 完整代码
+
+```
+# src/tools/refund_tool.pyfrom typing import Anyclass RefundTool:    """模拟退款执行工具。"""    def __init__(self, orders: dict[str, dict[str, Any]]):        # 与 OrderTool 使用同一份订单数据        self.orders = orders    def execute_refund(        self,        user_id: str,        order_id: str    ) -> dict:        """执行退款，并进行服务端业务校验。"""        order = self.orders.get(order_id)        # 1. 检查订单是否存在        if order is None:            return {                "success": False,                "error": "订单不存在"            }        # 2. 再次检查订单所属人        if order.get("user_id") != user_id:            return {                "success": False,                "error": "无权退款：订单不属于当前用户"            }
+```
+
+### 6.3 这里有一个特别重要的设计：共享订单数据
+
+注意这两行：
+
+```
+order_tool = OrderTool()refund_tool = RefundTool(    orders=order_tool.orders)
+```
+
+为什么要这样写？
+
+因为：
+
+- OrderTool 查询订单。
+- RefundTool 修改订单退款状态。
+
+它们必须操作同一份订单数据。
+
+如果两个工具分别创建独立的订单字典：
+
+```
+order_tool = OrderTool()refund_tool = RefundTool(    orders=another_orders)
+```
+
+就可能出现：
+
+```
+RefundTool：退款成功
+OrderTool：订单仍然显示未退款
+```
+
+这就是一个典型的数据一致性问题。
+
+今天我们使用共享字典模拟数据库，后续可以把它替换成 Repository 或数据库服务。
+
+## 七、实现第五个类：PaymentAgent
+
+核心执行引擎
+
+文件：`src/agent/agent.py`
+
+这是今天最重要的一个类。
+
+前面四个类都只是提供基础能力。
+
+真正让它们协同工作的，是 PaymentAgent。
+
+### 7.1 先理解 Agent 的执行流程
+
+我们先看两个场景。
+
+场景 A：查询订单
+
+```
+用户：查询 ORD1001
+        ↓
+Agent：Planning
+        ↓
+Agent：选择 query_order
+        ↓
+Agent：调用 OrderTool
+        ↓
+OrderTool：返回订单数据
+        ↓
+Agent：Observation
+        ↓
+Agent：生成最终回答
+```
+
+场景 B：申请退款
+
+```
+用户：退款 ORD1001
+        ↓
+Agent：Planning
+        ↓
+Agent：查询订单
+        ↓
+OrderTool：返回订单数据
+        ↓
+Agent：检查用户权限
+        ↓
+PermissionTool：返回 allowed=True
+        ↓
+Agent：调用退款工具
+        ↓
+RefundTool：再次执行服务端校验
+        ↓
+Agent：生成最终回答
+```
+
+你要特别注意：
+
+Agent 不只是简单地调用工具。
+
+它负责决定工具调用的先后顺序，并根据每个工具的返回结果决定下一步。
+
+### 7.2 完整代码
+
+```
+# src/agent/agent.pyimport refrom typing import Anyfrom src.agent.state import AgentStateclass PaymentAgent:    """最小电商支付 Agent 执行框架。"""    def __init__(self, tools: dict[str, Any]):        self.tools = tools    def _extract_order_id(        self,        user_input: str    ) -> str | None:        """从用户输入中提取订单号。"""        match = re.search(            r"ORD\d+",            user_input,            re.IGNORECASE        )        return match.group(0).upper() if match else None    def _record_tool_call(        self,        state: AgentState,        tool_name: str,        arguments: dict    ) -> None:        """记录真实工具调用信息。"""
+```
+
+## 八、把五个类连接起来：创建 PaymentAgent
+
+到这里，五个文件已经实现，但它们还没有真正协作。
+
+我们需要创建工具实例，并注入 Agent。
+
+### 8.1 依赖关系初始化
+
+可以先在项目根目录的 `main.py` 中写：
+
+```
+# main.pyfrom src.agent.agent import PaymentAgentfrom src.tools.order_tool import OrderToolfrom src.tools.permission_tool import PermissionToolfrom src.tools.refund_tool import RefundTool# 1. 创建订单工具order_tool = OrderTool()# 2. 创建权限工具permission_tool = PermissionTool()# 3. 创建退款工具# 注意：和 OrderTool 共用同一份订单数据refund_tool = RefundTool(    orders=order_tool.orders)# 4. 将工具注册给 Agenttools = {    "order": order_tool,    "permission": permission_tool,    "refund": refund_tool}# 5. 创建 Agentagent = PaymentAgent(tools=tools)# 6. 测试订单查询result = agent.run(    user_id="U001",    user_input="帮我查询订单 ORD1001 的支付状态"
+```
+
+运行：
+
+```
+python main.py
+```
+
+### 8.2 你应该看到什么结果？
+
+第一次查询：
+
+```
+最终回答：
+订单 ORD1001 查询成功，
+支付状态：PAID，
+退款状态：NOT_REFUNDED
+
+执行状态：success
+```
+
+第二次退款：
+
+```
+退款结果：
+订单 ORD1001 退款成功，退款金额：199.00
+
+执行状态：success
+```
+
+如果再次退款：
+
+```
+退款失败：订单已经退款，不能重复退款
+
+执行状态：failed
+```
+
+如果 U002 尝试退款 ORD1001：
+
+```
+退款失败：用户无权操作该订单
+
+执行状态：failed
+```
+
+### 8.3 完整执行链路示意
+
+以 U002 越权退款 ORD1001 为例：
+![img.png](越权执行链路示意.png)
+
+这就是 Agent 测试最值得关注的地方：
+
+```
+assert "execute_refund" not in tool_names
+```
+
+不是只验证最后回答说了退款失败，而是要验证退款工具根本没有被调用。
+
+## 九、运行前需要理解的两个重要限制
+
+这份代码是教学用的最小 Agent 框架，还不是生产级支付 Agent。
+
+限制 1：Planning 是规则模拟，不是真正的 LLM Planning。
+
+例如：
+
+```
+is_refund = any(    keyword in user_input    for keyword in ["退款", "退掉", "退还"])
+```
+
+这种方法可能把：
+
+```
+查询 ORD1001 的退款状态
+```
+
+错误识别成退款操作。
+
+建议把 Agent 中这段判断替换为：
+
+```
+def _is_refund_request(self, user_input: str) -> bool:    explicit_refund_phrases = [        "申请退款",        "我要退款",        "帮我退款",        "帮我退",        "退掉",        "退还",        "执行退款"    ]    return any(        phrase in user_input        for phrase in explicit_refund_phrases    )
+```
+
+然后在 `run()` 中：
+
+```
+is_refund = self._is_refund_request(user_input)
+```
+
+这只是一个教学阶段的规则识别器，不能替代生产环境的意图识别。
+
+限制 2：内存字典不能保证生产环境的退款幂等性。
+
+真实支付系统需要在服务端使用数据库事务、幂等键、并发控制等机制，避免两个并发请求同时退款。
+
+目前的 RefundTool 只模拟了基本业务校验。
+
+## 十、从测试开发角度，理解 Agent 的底层机制
+
+现在我们回头看一下今天最重要的三个问题。
+
+### 10.1 Agent 为什么需要 State？
+
+因为 Agent 执行不是一个简单函数调用，而是一系列连续动作。
+
+State 就像一次业务流程的上下文容器。
+
+例如：
+
+```
+state = AgentState(    user_id="U001",    user_input="退款 ORD1001")
+```
+
+在执行过程中：
+
+```
+state.order_id = "ORD1001"state.order_data = {    "order_id": "ORD1001",    "payment_status": "PAID"}
+```
+
+权限校验、退款执行、最终回答都可以使用同一个 State。
+
+每次 `agent.run()` 都会创建新的 State，避免不同请求之间的数据串扰。
+
+### 10.2 Agent 为什么需要 Tools？
+
+因为 LLM 或 Agent 本身并不天然拥有订单数据库、支付系统和退款系统的访问能力。
+
+Tool 是 Agent 与外部业务能力交互的接口。
+
+未来接入真实 LLM 后，整体模式会变成：
+
+```
+LLM 判断：
+我要查询订单
+
+       ↓
+
+Agent 接收模型的工具调用请求
+
+       ↓
+
+Python 执行 OrderTool
+
+       ↓
+
+将工具结果返回给 LLM
+
+       ↓
+
+LLM 根据结果决定下一步
+```
+
+今天我们用规则代替 LLM 的决策部分，但工具执行机制是一致的。
+
+### 10.3 Trace 为什么对 Agent 测试这么重要？
+
+因为 Trace 能告诉我们 Agent 每一步实际做了什么。
+
+例如：
+
+```
+for item in result.trace:    print(item)
+```
+
+可能得到：
+
+```
+1. planning
+2. tool_call: query_order
+3. observation: query_order
+4. tool_call: check_permission
+5. observation: check_permission
+6. tool_call: execute_refund
+7. observation: execute_refund
+8. final_response
+```
+
+这就是后续 Agent 自动化测试、执行链路分析和问题定位的基础。
+
+## 十一、今天先做一个小练习
+
+在正式进入完整 Pytest 作业前，我希望你先确认自己真正理解了执行机制。
+
+Day 4 底层机制理解测试
+
+4 道题
+
+Q1. AgentState 的主要职责是什么？
+
+负责调用 LLM
+
+保存一次 Agent 执行过程中的数据
+
+负责执行退款
+
+负责查询数据库
+
+Q2. 用户 U002 退款 ORD1001，但订单属于 U001，正确执行链路是什么？
+
+直接调用 RefundTool，再返回失败
+
+查询订单 → 权限校验 → 拒绝退款，不调用 RefundTool
+
+直接返回退款成功
+
+只调用 PermissionTool，不查询订单
+
+Q3. 为什么 OrderTool 和 RefundTool 要共享同一份订单数据？
+
+为了减少代码行数
+
+为了保证退款修改的数据能被订单查询读取
+
+为了让 Agent 自动调用 LLM
+
+为了共享 Trace
+
+Q4. 如果 PermissionTool 返回 allowed=False，应该验证什么？
+
+只验证最终回答
+
+验证退款失败，并断言 execute_refund 没有被调用
+
+验证退款工具返回成功
+
+验证订单查询没有发生
+
+提交答案
+
+## 十二、今天的编码顺序和验收要求
+
+我建议你不要一次性把五个文件全部写完。
+
+按照下面顺序操作：
+
+1. 先完成 `state.py`，自己创建两个 State，验证数据是否隔离。
+2. 完成 `order_tool.py`，单独测试订单查询。
+3. 完成 `permission_tool.py`，测试有权限和无权限。
+4. 完成 `refund_tool.py`，测试正常退款、未支付退款、重复退款和越权退款。
+5. 最后完成 `agent.py`，把前面四个组件串起来。
+
+今天第一阶段验收标准：
+
+- 可以查询订单。
+- 可以申请退款。
+- 无权限时不调用退款工具。
+- 未支付订单不能退款。
+- 已退款订单不能重复退款。
+- 每次执行有独立 State。
+- Trace 能反映真实执行顺序。
+- 工具异常不能被伪装成执行成功。
+
+完成后再编写 `tests/week01/test_agent_execution.py`，我们逐项评审。
+
+导师最后强调一句：
+
+今天这套代码最重要的不是实现了退款，而是你第一次真正拥有了一个可以控制、可以观察、可以测试的 Agent 执行框架。
+
+下一步建议先独立实现 `state.py` 和三个 Tool，不要直接复制全部代码。完成后把你的版本发给我，我会先评审这四个组件，再带你逐行理解 `PaymentAgent.run()` 的执行过程。
