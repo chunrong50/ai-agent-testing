@@ -777,7 +777,7 @@ Day 4 正式开始。今天的目标不是写出一个能聊天的 Agent，而�
 | `permission_tool.py` | 验证用户权限            |
 | `refund_tool.py`     | 执行退款              |
 
-先统一一下文件名：你写的 `order_too.py`、`premission_tool.py`，建议分别使用 `order_tool.py`、`permission_tool.py`。
+先统一一下文件名：你写的 `order_too.py`、`permission_tool.py`，建议分别使用 `order_tool.py`、`permission_tool.py`。
 
 ## 一、先理解：Agent 到底是什么？
 
