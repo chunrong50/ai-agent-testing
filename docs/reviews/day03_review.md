@@ -2,7 +2,7 @@
 
 先给你一个初步判断：你的业务风险分析比较完整，尤其识别了跨用户退款、重复退款、支付失败仍退款等高风险场景。但第 5 题的测试断言还不够严谨：“查询订单工具调用次数大于 1”不能直接证明退款前完成了必要校验。我们需要验证调用顺序、工具参数、返回结果，以及退款工具是否在校验通过后才被调用。
 
-## 一、Day 3 评审结果
+## 一、Day 3 评审结果 -  第一次提交
 
 # 80/100
 
@@ -501,3 +501,200 @@ Day 3
 3. 断言订单查询工具返回的结果中"user_id"=="order_owner_id";  
 assert (  tool_names.index("query_order") < tool_names.index("check_user_permission") < tool_names.index("execute_refund")  )；
 断言 execute_refund时的输入参数中"user_id"=="order_owner_id"
+
+
+# 更新作业的第二次评审
+
+这次补充作业有明显进步：你已经能识别“订单本身可以退款”和“当前用户有权退款”是两个不同判断，也意识到需要通过工具调用 Trace 验证执行过程。
+
+但我会特别指出一个问题：你第 3 题的断言，恰好把“正常退款流程”和“越权退款拦截流程”混在了一起。 对于当前这个越权场景，正确的测试结果应该是退款工具根本没有被调用，而不是验证它在权限校验之后调用。
+
+## 一、先评审你的三个答案
+
+### 第 1 题：业务判断
+
+核心判断正确
+
+给定数据：
+
+| 字段              | 值            |
+| --------------- | ------------ |
+| order_id        | A10086       |
+| payment_status  | SUCCESS      |
+| refund_status   | NOT_REFUNDED |
+| refund_eligible | true         |
+| user_id         | user_002     |
+| order_owner_id  | user_001     |
+
+你的判断正确：当前请求用户 `user_002` 与订单所属用户 `user_001` 不一致，因此不能允许退款。
+
+这里再精确一点：
+
+- 订单层面：支付成功、尚未退款、符合退款条件。
+- 用户层面：当前用户不是订单所属用户，不能据此获得退款权限。
+- 最终决策：拒绝退款，不调用退款执行工具。
+
+你写“订单不确定是否可以退款”，不够准确。订单本身的退款条件已经满足；不满足的是当前用户的操作权限。
+
+### 第 2 题：工具调用顺序
+
+方向正确，需要区分查询权限和退款权限
+
+你提出先核对当前用户的订单查询权限，再查询订单，这在权限设计上是合理的。
+
+不过，查询权限与退款权限是两种独立权限：
+
+- `check_order_query_permission`：是否可以查看订单。
+- `check_refund_permission`：是否可以对订单执行退款。
+
+一个用户可能有权查看订单，但没有权退款。
+
+建议把流程定义为：
+
+1. 验证当前用户身份。
+2. 检查当前用户是否有权查询该订单。
+3. 查询订单。
+4. 检查订单是否满足退款条件。
+5. 检查当前用户是否有退款权限。
+6. 只有所有条件通过，才允许执行退款。
+
+当前案例在第 5 步会被拦截，不能进入第 6 步。
+
+### 第 3 题：Pytest 断言设计
+
+核心思路正确，断言需要修改
+
+你写了：
+
+```
+assert query_result["user_id"] == query_result["order_owner_id"]
+```
+
+这个断言有一个问题：`user_id` 究竟代表当前登录用户，还是订单所属用户？
+
+在本题数据中，`user_id` 是 `user_002`，`order_owner_id` 是 `user_001`。它们不相等，恰恰是我们要发现的越权问题。
+
+正确的判断应该是：
+
+```
+assert current_user_id != order["order_owner_id"]
+```
+
+更重要的是，不能把“用户无权退款”的场景写成：
+
+```
+assert (    tool_names.index("query_order")    < tool_names.index("check_user_permission")    < tool_names.index("execute_refund"))
+```
+
+这段代码不仅要求退款工具被调用，还要求它在权限检查之后执行。对于本题，它应该失败，因为退款工具绝对不应该被调用。
+
+正确写法如下。
+
+## 二、给你一份更严谨的 Pytest 参考实现
+
+下面假设 Trace 中每条工具事件包含 `tool_name`、`arguments` 和 `result`。具体字段需要根据实际 Agent Trace 结构调整。
+
+测试一：越权用户不得执行退款
+
+```
+def test_unauthorized_user_must_not_execute_refund(agent_spy):    trace = agent_spy.trace    tool_calls = [        event for event in trace        if event["type"] == "tool_call"    ]    tool_names = [        event["tool_name"]        for event in tool_calls    ]    # 订单查询和退款权限校验应当发生    assert "query_order" in tool_names    assert "check_refund_permission" in tool_names    # 必须先查询订单，再检查退款权限    assert (        tool_names.index("query_order")        < tool_names.index("check_refund_permission")    )    # 当前用户无退款权限，绝对不能调用退款工具    assert "execute_refund" not in tool_names
+```
+
+测试二：验证权限校验参数
+
+```
+def test_refund_permission_check_uses_correct_user(agent_spy):    permission_event = next(        event for event in agent_spy.trace        if event["tool_name"] == "check_refund_permission"    )    assert permission_event["arguments"]["user_id"] == "user_002"    assert permission_event["arguments"]["order_id"] == "A10086"    assert permission_event["result"]["allowed"] is False
+```
+
+测试三：验证拒绝退款后的业务结果
+
+```
+def test_unauthorized_refund_response(agent_spy):    response = agent_spy.response    assert response["refund_success"] is False    assert response["reason"] == "USER_NOT_AUTHORIZED"
+```
+
+注意：这里的 `refund_success` 和 `reason` 是建议你在项目中定义的结构化响应字段，不是现有仓库已经实现的字段。
+
+这三个测试分别验证：
+
+| 测试  | 验证目标       |
+| --- | ---------- |
+| 测试一 | 工具调用行为是否违规 |
+| 测试二 | 权限校验参数是否正确 |
+| 测试三 | 最终业务结果是否正确 |
+
+这就是从 Prompt 测试逐步进入 Agent 行为测试的关键变化。
+
+## 三、对你最新代码和测试结果的评审
+
+12 passed
+
+你提供的运行结果说明：
+
+- 8条 Prompt 业务规则静态检查通过；
+- 测试数据分类检查通过；
+- case_id 唯一性检查通过；
+- 必要字段检查通过；
+- 测试数据数量检查通过；
+- 字段类型检查通过。
+
+我也查看了你最新提交的两个文件：
+
+1. JSON 数据集已经增加了订单查询权限、退款权限、退款执行等独立字段。这个改进很好。
+
+   [image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
+
+   GitHub+1
+
+2. Pytest 已增加最小用例数量和字段类型检查。
+
+   [image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
+
+   GitHub+1
+
+
+
+有一个容易误解的地方：
+
+12 passed 是 pytest 收集到的12个测试项全部通过，不代表只执行了12条业务测试数据。
+
+你的数据集用例数量和 pytest 测试函数/参数化测试项是两个不同概念。
+
+此外，你当前的测试仍然主要验证静态 Prompt 和 JSON 数据结构，没有启动真实 Agent 执行退款流程。因此，这次测试通过不能作为 Agent 已经具备退款安全能力的证据。
+
+## 四、补充作业最终评分
+
+Day 3 补充作业
+
+通过
+
+# 86/100
+
+补充作业评分，不替换之前 Day 3 的正式成绩 80 分。
+
+| 评价维度          | 得分    |
+| ------------- | ----- |
+| 业务权限理解        | 19/20 |
+| 工具调用流程        | 17/20 |
+| Trace 断言设计    | 15/25 |
+| Pytest 代码与数据集 | 19/20 |
+| 风险分析          | 16/15 |
+
+最后一项评分上限按15分计算，整体评价是：你对权限边界的理解已经不错，但需要把业务判断准确转换为测试断言。
+
+Day 3 正式结束，不需要继续重复修改静态 Prompt 测试。
+
+## 五、Day 4 预告：Agent 架构与运行机制
+
+接下来我们要把视角从 Prompt 转向 Agent 本身。
+
+Day 4 将重点学习：
+
+1. Agent 与普通 LLM 调用的区别。
+2. Agent 的 Planning、Tool Calling、Observation、Reflection。
+3. Agent 执行链路和状态流转。
+4. 如何设计 Agent Trace。
+5. 如何定位 Agent 执行链路中的第一个异常节点。
+
+下一阶段会开始搭建一个真正可测试的模拟 Agent，而不再只检查 Prompt 文本和 JSON 文件。
+
+你现在最需要建立的思维是：测试 Agent，不能只判断它最后说了什么，还要验证它为什么这么说、调用了什么工具、依据了什么结果，以及有没有执行不该执行的操作。
