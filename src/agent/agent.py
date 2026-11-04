@@ -2,7 +2,7 @@
 # src/agent/agent.py
 
 import re
-from typing import Any
+from typing import Any, Optional
 
 from src.agent.state import AgentState
 
@@ -19,7 +19,7 @@ class PaymentAgent:
     def __init__(self, tools: dict[str, Any]):
         self.tools = tools
 
-    def _extract_order_id(self,user_input: str) -> str | None:
+    def _extract_order_id(self,user_input: str) -> Optional[str]:
         """从用户输入中提取订单号。"""
         match = re.search(
             r"ORD\d+",

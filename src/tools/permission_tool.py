@@ -29,7 +29,7 @@ class PermissionTool:
                 "error": "订单缺少所属用户信息"
             }
 
-        allowed = user_id == order_user_id and order["payment_status"]=="PAID" and order["refund_status"]=="NOT_REFUNDED"
+        allowed = user_id == order_user_id
 
         return {
             "success": True,

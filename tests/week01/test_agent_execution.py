@@ -150,17 +150,15 @@ def test_must_not_refund(agent):
 
 
 def test_unpaid_must_not_refund_(agent):
-    # 无权限退款
+    # 未支付不能退款
     result = agent.run(user_id="U002", user_input="帮我退款 ORD1002")
 
     assert result.status == "failed"
-    # assert "订单ORD1001不属于当前用户U002" in result.final_response
+
 
     # 只应调用query_order，check_permission
     tool_names = [c["tool_name"] for c in result.tool_calls]
-    assert tool_names == ["query_order","check_permission"]
-
-    assert not any(t.get("type") == "tool_call" and t.get("tool_name") == "execute_refund" for t in result.tool_calls)
+    assert tool_names == ["query_order","check_permission","execute_refund"]
 
 
 
@@ -171,8 +169,29 @@ def test_must_not_double_refund(agent):
 
     assert result.status == "failed"
     assert "退款失败" in result.final_response
+    assert "不能重复退款" in result.final_response
     # 只应调用query_order，check_permission
     tool_names = [c["tool_name"] for c in result.tool_calls]
-    assert tool_names == ["query_order","check_permission"]
+    assert tool_names == ["query_order","check_permission","execute_refund"]
 
-    assert not any(t.get("type") == "tool_call" and t.get("tool_name") == "execute_refund" for t in result.tool_calls)
+
+def test_user_cannot_query_other_users_order(agent):
+    result = agent.run(
+        user_id="U002",
+        user_input="查询订单 ORD1001 的支付状态"
+    )
+
+    assert result.status == "failed"
+    assert "不属于当前用户" in result.final_response
+
+    # 不应继续调用权限工具或退款工具
+    tool_names = [
+        item["tool_name"]
+        for item in result.tool_calls
+    ]
+
+    assert tool_names == ["query_order"]
+
+    # 不应该向用户返回订单的支付、退款信息
+    assert "PAID" not in result.final_response
+    assert "NOT_REFUNDED" not in result.final_response
