@@ -43,16 +43,16 @@ agent = PaymentAgent(tools=tools)
 
 #
 # # 7. 测试退款
-result = agent.run(
-    user_id="U001",
-    user_input="帮我退款 ORD1001"
-)
-
-print("\n退款结果：", result.final_response)
-print("执行状态：", result.status)
-print("工具调用：", result.tool_calls)
-print("执行轨迹：", result.trace)
-print("执行轨迹：", 199.0==199.00)
+# result = agent.run(
+#     user_id="U001",
+#     user_input="帮我退款 ORD1001"
+# )
+#
+# print("\n退款结果：", result.final_response)
+# print("执行状态：", result.status)
+# print("工具调用：", result.tool_calls)
+# print("执行轨迹：", result.trace)
+# print("执行轨迹：", 199.0==199.00)
 
 # 无权限时不调用退款工具。
 # result = agent.run(
@@ -62,8 +62,9 @@ print("执行轨迹：", 199.0==199.00)
 #
 # print("\n退款结果：", result.final_response)
 # print("执行状态：", result.status)
+# print("工具调用：", result.tool_calls)
 # print("执行轨迹：", result.trace)
-#
+# #
 
 
 # 未支付订单不能退款。
@@ -74,20 +75,31 @@ print("执行轨迹：", 199.0==199.00)
 #
 # print("\n退款结果：", result.final_response)
 # print("执行状态：", result.status)
+# print("工具调用：", result.tool_calls)
 # print("执行轨迹：", result.trace)
-#
+
 
 # 已退款订单不能重复退款。
+result = agent.run(
+    user_id="U001",
+    user_input="帮我退款 ORD1003"
+)
+
+print("\n退款结果：", result.final_response)
+print("执行状态：", result.status)
+print("工具调用：", result.tool_calls)
+print("执行轨迹：", result.trace)
+
+#查询退款状态
 # result = agent.run(
 #     user_id="U001",
-#     user_input="帮我退款 ORD1003"
+#     user_input="帮我查询订单 ORD1001 的退款状态"
 # )
 #
 # print("\n退款结果：", result.final_response)
 # print("执行状态：", result.status)
+# print("工具调用：", result.tool_calls)
 # print("执行轨迹：", result.trace)
-
-
 
 
 
