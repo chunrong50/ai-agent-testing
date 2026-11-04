@@ -25,7 +25,7 @@ class PaymentAgent:
         return match.group(0).upper() if match else None
 
     def _record_tool_call(self,state: AgentState,tool_name: str,arguments: dict) -> None:
-        """记录真实工具调用信息。"""
+        """记录尝试真实工具调用信息。"""
         state.add_tool_call(
             tool_name=tool_name,
             arguments=arguments
@@ -82,6 +82,8 @@ class PaymentAgent:
                 keyword in user_input
                 for keyword in ["退款", "退掉", "退还","取消订单","取消支付"]
             )
+            if "退款状态" or "退款成功" in user_input:
+                is_refund = False
             # 如果包含退款语义就认定需要退款，否则走订单查询
             action = (
                 "refund"
@@ -119,6 +121,15 @@ class PaymentAgent:
                 tool_name="query_order",
                 result=order_result
             )
+            # 订单不属于当前用户
+            if not order_result["user_id"] == user_id:
+                error=f"订单{order_id}不属于当前用户{user_id}"
+                state.error = error
+                return self._finish(
+                    state,
+                    error,
+                    "failed"
+                )
 
             # 订单查询失败时，返回到结束
             if not order_result["success"]:
@@ -137,6 +148,9 @@ class PaymentAgent:
             # ==========================
 
             if action == "query_order":
+
+
+
 
                 payment_status = (
                     state.order_data["payment_status"]

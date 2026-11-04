@@ -36,7 +36,7 @@ class AgentState:
         tool_name: str,
         arguments: dict[str, Any]
     ) -> None:
-        """记录一次工具调用，把工具名称和参数追加到tool_calls"""
+        """记录一次工具尝试调用，把工具名称和参数追加到tool_calls"""
 
         self.tool_calls.append({
             "tool_name": tool_name,
@@ -56,12 +56,3 @@ class AgentState:
             **details
         })
 
-
-a=AgentState("User0001","帮我查询订单A10086")
-b=AgentState("User0002","帮我查询订单A10089")
-# a.tool_calls=
-print(a.status)
-print(b.status)
-a.add_tool_call("query",{"id": "A10086"})
-print(a.tool_calls)
-print(b.tool_calls)

@@ -55,7 +55,7 @@ class OrderTool:
                 "error": "订单号不能为空"
             }
 
-        order = self.orders.get(order_id)
+        order = self.orders.get(order_id.strip())
 
         if order is None:
             return {
