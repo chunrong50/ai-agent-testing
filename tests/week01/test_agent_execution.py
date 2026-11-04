@@ -134,6 +134,18 @@ def test_query_refund_status(agent):
 
     assert not any(t.get("type") == "tool_call" and t.get("tool_name") == "execute_refund" for t in result.tool_calls)
 
+def test_must_not_query(agent):
+    # 无权限查询其他人订单
+    result = agent.run(user_id="U002", user_input="帮我查询 ORD1001")
+
+    assert result.status == "failed"
+    assert "订单ORD1001不属于当前用户U002" in result.final_response
+
+    # 只应调用一次 query_order，不应触发权限/退款
+    tool_names = [c["tool_name"] for c in result.tool_calls]
+    assert tool_names == ["query_order"]
+
+
 
 def test_must_not_refund(agent):
     # 无权限退款
