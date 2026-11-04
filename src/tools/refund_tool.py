@@ -11,13 +11,8 @@ class RefundTool:
         # 与 OrderTool 使用同一份订单数据
         self.orders = orders
 
-    def execute_refund(
-        self,
-        user_id: str,
-        order_id: str
-    ) -> dict:
+    def execute_refund(self,user_id: str,order_id: str) -> dict:
         """执行退款，并进行服务端业务校验。"""
-
         order = self.orders.get(order_id)
 
         # 1. 检查订单是否存在

@@ -40,10 +40,7 @@ DEFAULT_ORDERS = {
 class OrderTool:
     """订单查询工具。"""
 
-    def __init__(
-        self,
-        orders: Optional[dict] = None
-    ):
+    def __init__(self,orders: Optional[dict] = None):
         # 每个独立测试环境使用自己的订单数据
         self.orders = deepcopy(
             DEFAULT_ORDERS if orders is None else orders

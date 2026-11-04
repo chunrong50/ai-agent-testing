@@ -36,7 +36,7 @@ class AgentState:
         tool_name: str,
         arguments: dict[str, Any]
     ) -> None:
-        """记录一次工具调用。"""
+        """记录一次工具调用，把工具名称和参数追加到tool_calls"""
 
         self.tool_calls.append({
             "tool_name": tool_name,

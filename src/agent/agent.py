@@ -10,15 +10,12 @@ from src.agent.state import AgentState
 class PaymentAgent:
     """最小电商支付 Agent 执行框架。"""
 
+    # 初始化agent可以使用的工具
     def __init__(self, tools: dict[str, Any]):
         self.tools = tools
 
-    def _extract_order_id(
-        self,
-        user_input: str
-    ) -> str | None:
+    def _extract_order_id(self,user_input: str) -> str | None:
         """从用户输入中提取订单号。"""
-
         match = re.search(
             r"ORD\d+",
             user_input,
@@ -27,14 +24,8 @@ class PaymentAgent:
 
         return match.group(0).upper() if match else None
 
-    def _record_tool_call(
-        self,
-        state: AgentState,
-        tool_name: str,
-        arguments: dict
-    ) -> None:
+    def _record_tool_call(self,state: AgentState,tool_name: str,arguments: dict) -> None:
         """记录真实工具调用信息。"""
-
         state.add_tool_call(
             tool_name=tool_name,
             arguments=arguments
@@ -46,14 +37,8 @@ class PaymentAgent:
             arguments=arguments.copy()
         )
 
-    def _finish(
-        self,
-        state: AgentState,
-        response: str,
-        status: str = "success"
-    ) -> AgentState:
+    def _finish( self,state: AgentState,response: str,status: str = "success") -> AgentState:
         """统一结束 Agent 执行。"""
-
         state.final_response = response
         state.status = status
 
@@ -65,29 +50,21 @@ class PaymentAgent:
 
         return state
 
-    def run(
-        self,
-        user_id: str,
-        user_input: str
-    ) -> AgentState:
+    def run(self,user_id: str,user_input: str) -> AgentState:
         """执行一次 Agent 任务。"""
 
-        state = AgentState(
-            user_id=user_id,
-            user_input=user_input
-        )
+        state = AgentState(user_id=user_id,user_input=user_input)
 
         try:
             # ==========================
             # 1. Planning：任务规划
             # ==========================
 
-            order_id = self._extract_order_id(
-                user_input
-            )
+            order_id = self._extract_order_id(user_input)
 
             state.order_id = order_id
 
+            # 检查订单号
             if order_id is None:
                 state.add_trace(
                     "planning",
@@ -100,18 +77,19 @@ class PaymentAgent:
                     "请提供正确的订单号",
                     "failed"
                 )
-
+            # 检查输入中是否需要退款？
             is_refund = any(
                 keyword in user_input
-                for keyword in ["退款", "退掉", "退还"]
+                for keyword in ["退款", "退掉", "退还","取消订单","取消支付"]
             )
-
+            # 如果包含退款语义就认定需要退款，否则走订单查询
             action = (
                 "refund"
                 if is_refund
                 else "query_order"
             )
 
+            # 追加状态记录->下一步的执行的工具
             state.add_trace(
                 "planning",
                 action=action,
@@ -122,28 +100,27 @@ class PaymentAgent:
             # 2. 查询订单
             # ==========================
 
+            # 拿到订单工具
             order_tool = self.tools["order"]
 
-            arguments = {
-                "order_id": order_id
-            }
+            arguments = {"order_id": order_id}
 
-            self._record_tool_call(
-                state,
-                "query_order",
-                arguments
-            )
+            # 记录订单查询被调用了
+            self._record_tool_call(state,"query_order",arguments)
 
+            # 调用订单工具
             order_result = order_tool.query_order(
                 **arguments
             )
 
+            # 记录订单工具返回的结果
             state.add_trace(
                 "observation",
                 tool_name="query_order",
                 result=order_result
             )
 
+            # 订单查询失败时，返回到结束
             if not order_result["success"]:
                 state.error = order_result["error"]
 
@@ -156,7 +133,7 @@ class PaymentAgent:
             state.order_data = order_result["data"]
 
             # ==========================
-            # 3. 查询任务：直接返回结果
+            # 3. 获取查询订单的结果，并返回state和工具的response
             # ==========================
 
             if action == "query_order":
