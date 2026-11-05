@@ -41,6 +41,7 @@ class ToolCall:
 
 @dataclass
 class LLMResponse:
+    # 返回需要的内容和工具给 Agent
     content: Optional[str] = None
     tool_calls: list[ToolCall] = field(default_factory=list)
 

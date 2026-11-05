@@ -2,10 +2,19 @@ import pytest
 
 from src.utils.context_checker import ContextChecker
 from src.utils.token_counter import TokenCounter
-from tests.conftest import FakeTokenCounter
 
 
 #测试LLM的上下文窗口大小"
+
+
+#用于模拟token计算的值
+class FakeTokenCounter:
+    def __init__(self, token_count):
+        self.token_count = token_count
+
+    def count(self, text):
+        return self.token_count
+
 
 
 @pytest.fixture(scope="function")

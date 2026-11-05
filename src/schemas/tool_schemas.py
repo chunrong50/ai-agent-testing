@@ -50,16 +50,12 @@ EXECUTE_REFUND_SCHEMA = {
         },
     },
 }
-# from typing import Any
-#
-# QUERY_ORDER_SCHEMA: dict[str, Any] = { ... }
-# EXECUTE_REFUND_SCHEMA: dict[str, Any] = { ... }
-# TOOL_SCHEMAS: list[dict[str, Any]] = [QUERY_ORDER_SCHEMA, EXECUTE_REFUND_SCHEMA]
+
 #
 TOOL_SCHEMAS = [QUERY_ORDER_SCHEMA, EXECUTE_REFUND_SCHEMA]
 
 # 白名单：Agent 只执行 Schema 中声明过的工具
-ALLOWED_TOOL_NAMES = {s["function"]["name"] for s in TOOL_SCHEMAS}
+ALLOWED_TOOL_NAMES = {s["function"]["name"] for s in TOOL_SCHEMAS}  # 编译器问题
 
 
 def get_schema(name: str) -> Optional[dict]:
