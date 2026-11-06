@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 reports/
 .idea/vcs.xml
+.idea/ai-agent-testing.iml
+idea/inspectionProfiles/profiles_settings.xml
