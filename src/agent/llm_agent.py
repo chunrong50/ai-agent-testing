@@ -41,13 +41,14 @@ class ToolCall:
 
 @dataclass
 class LLMResponse:
-    # 返回需要的内容和工具给 Agent
+    # LLM 的响应，包含可选的文本内容 content 和工具调用列表 tool_calls
     content: Optional[str] = None
     tool_calls: list[ToolCall] = field(default_factory=list)
 
 
 class ToolCallingLLM(Protocol):
-    def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> LLMResponse: ...
+    # 理解为可以进行工具调用的LLM
+    def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> LLMResponse: ... # ... Protocol协议的占位
 
 
 class OpenAICompatibleLLM:
@@ -60,9 +61,9 @@ class OpenAICompatibleLLM:
                  base_url: Optional[str] = None):
         from openai import OpenAI  # 延迟导入，单元测试不需要安装 openai
 
-        self.client = OpenAI(api_key=api_key or os.environ["LLM_API_KEY"],
-                             base_url=base_url or os.getenv("LLM_BASE_URL"))
-        self.model = model or os.getenv("LLM_MODEL", "gpt-4o-mini")
+        self.client = OpenAI(api_key=api_key or os.environ["DEEPSEEK_API_KEY"],
+                             base_url=base_url or os.getenv("DEEPSEEK_BASE_URL"))
+        self.model = model or os.getenv("DEEPSEEK_MODEL", "gpt-4o-mini")
 
     def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> LLMResponse:
         kwargs: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": 0}
@@ -97,8 +98,13 @@ class LLMAgent(PaymentAgent):
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_input},
         ]
+
         try:
-            for _ in range(self.max_steps):
+            for _ in range(self.max_steps):  #  Agent与 LLM 的对话轮次（conversation turn）
+                # 第 1 轮：发消息给 LLM → LLM 返回 tool_calls → Agent 执行工具 → 把结果追加到 messages
+                # 第 2 轮：把"带工具结果的完整 messages"再发给 LLM → LLM 可能基于结果继续调用工具，或给出最终回复
+                # 第 3 轮：...
+                # 循环就是让 LLM 基于工具结果持续决策的机制。
                 response = self.llm.chat(messages=messages, tools=TOOL_SCHEMAS)
                 state.add_trace("llm_response", content=response.content,
                                 tool_calls=[tc.name for tc in response.tool_calls])

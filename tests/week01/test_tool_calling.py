@@ -31,11 +31,13 @@ class FakeLLM:
 
 
 def tool_resp(name, args, call_id="call_1"):
+    # 定义LLM的工具响应
     raw = args if isinstance(args, str) else json.dumps(args)
     return LLMResponse(tool_calls=[ToolCall(id=call_id, name=name, arguments=raw)])
 
 
 def text_resp(text):
+    # 定义LLM的文本响应
     return LLMResponse(content=text)
 
 
@@ -237,8 +239,10 @@ def test_llm_exception_is_handled(env):
     assert state.status == "failed" and state.final_response == "系统执行异常，请稍后重试"
 
 
+from dotenv import load_dotenv
+load_dotenv()
 # ============================ Smoke Test（真实 LLM）============================
-@pytest.mark.skipif(not os.getenv("LLM_API_KEY"), reason="需要设置 LLM_API_KEY")
+@pytest.mark.skipif(not os.getenv("LLM_API_KEY"), reason="需要设置 LLM_API_KEY")     #真实调用时使用：DEEPSEEK_API_KEY
 def test_smoke_real_llm_selects_query_order(env):
     agent = LLMAgent(OpenAICompatibleLLM(), env["tools"])
     state = agent.run("U001", "帮我查一下订单 ORD1001 的状态")
