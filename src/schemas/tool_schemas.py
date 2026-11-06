@@ -38,7 +38,7 @@ execute_refund_schema = {
     },
 }
 
-schemas = ["query_order_schema","execute_refund_schema"]
+schemas = [query_order_schema,execute_refund_schema]
 
 def get_schema(name):
     for schema in schemas:

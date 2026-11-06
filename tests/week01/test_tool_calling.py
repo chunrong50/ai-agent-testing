@@ -19,11 +19,12 @@ class FakeLLM:
         return self.responses.pop(0)
 
 
+
 @pytest.fixture
 def env():
     order_tool=OrderTool()
     refund_tool=RefundTool(order_tool.orders)
-    tools={"order":order_tool,"permission":PermissionTool,"refund":refund_tool}
+    tools={"query_order":order_tool,"permission_check":PermissionTool,"refund_tool":refund_tool}
     return {"tools":tools,"orders":order_tool.orders}
 
 response1={
@@ -43,11 +44,10 @@ response2={
     "content": "订单 ORD1001 已支付，未退款。"
 }
 
-@pytest.mark.parametrize(
-    "responses",
-    [response1,response2]
-)
-def test_tc01_query_order_selects_query_tool_with_correct_args(env,responses:[dict]):
-    llm=FakeLLM(responses)
+
+def test_tc01_query_order_selects_query_tool_with_correct_args(env):
+    llm=FakeLLM([response1,response2])
     agent=LLMToolAgent(llm,env["tools"])
-    agent.run("U001","帮我查一下订单 ORD1001")
+    state=agent.run("U001","帮我查一下订单 ORD1001")
+
+    assert state.status=="success"
