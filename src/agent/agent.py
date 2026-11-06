@@ -55,25 +55,22 @@ class PaymentAgent:
 
         return state
 
-
-
-
-    def _decide_action(self, user_input: str) -> str:
-        """判断动作：refund 或 query_order。"""
-        has_refund = any(k in user_input for k in self.REFUND_KEYWORDS)
-        has_query = any(k in user_input for k in self.QUERY_KEYWORDS)
-        # 明确查询意图优先，避免"查询退款状态"被误判为退款
-        if has_refund and not has_query:
-            return "refund"
-        return "query_order"
-
-
     def is_refund_intent(self, user_input: str) -> bool:
         """判断用户输入是否表达退款意图（排除查询类表述）。"""
         return (
                 any(k in user_input for k in self.REFUND_KEYWORDS)
                 and not any(k in user_input for k in self.QUERY_KEYWORDS)
         )
+
+    def _decide_action(self, user_input: str) -> str:
+        """判断动作：refund 或 query_order。"""
+        # 明确查询意图优先，避免"查询退款状态"被误判为退款
+        if self.is_refund_intent(user_input):
+            return "refund"
+        return "query_order"
+
+
+
 
     def run(self,user_id: str,user_input: str) -> AgentState:
         """执行一次 Agent 任务。"""
