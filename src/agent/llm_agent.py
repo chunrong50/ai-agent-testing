@@ -49,6 +49,8 @@ class LLMToolAgent(PaymentAgent):
             response=self.llm.chat(messages,tools=self.tools)
             messages.append(response)
 
+            state.add_trace("LLM response", response="success", result=response)
+
             # 4. 判断 LLM 是否要求调用工具
             if not response.get("tool_calls"):
                 return self._finish(state,response.get("content"))
@@ -113,9 +115,8 @@ class LLMToolAgent(PaymentAgent):
 
 
             # 7. 达到最大调用次数
-            return self._finish(state,"Error: Maximum tool calling steps reached","failed")
+        return self._finish(state,"Error: Maximum tool calling steps reached","failed")
 
-        return state
 
 
 

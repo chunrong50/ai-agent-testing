@@ -32,7 +32,7 @@ response1={
         {
             "name": "query_order",
             "arguments": {
-                "order_id": "A10086"
+                "order_id": "ORD1001"
             }
         }
     ],
@@ -51,3 +51,8 @@ def test_tc01_query_order_selects_query_tool_with_correct_args(env):
     state=agent.run("U001","帮我查一下订单 ORD1001")
 
     assert state.status=="success"
+    assert state.tool_calls[0]["tool_name"] == "query_order"
+
+    for x in state.tool_calls:
+        assert "refund_tool" not in x["tool_name"]
+
