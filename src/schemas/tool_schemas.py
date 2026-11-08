@@ -55,10 +55,6 @@ execute_refund_schema = {
                 "order_id": {
                     "type": "string",
                     "description": "需要退款的订单编号，例如 ORD1001",
-                },
-                "amount":{
-                    "type": "number",
-                    "description": "需要退款的金额，例如 400",
                 }
             },
             "required": ["order_id"]

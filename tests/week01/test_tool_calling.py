@@ -113,7 +113,7 @@ def test_tc02_permission_check_and_refund_tool_with_correct_args(env):
         assert x["arguments"] == {
             "order_id": "ORD1001"
         }
-    # 确认 LLM 被调用了两次
+    # 确认 LLM 被调用了4次
     assert len(llm.calls) == 4
 
 
