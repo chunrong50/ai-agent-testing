@@ -48,8 +48,8 @@ class RefundTool:
                 "success": False,
                 "error": "订单退款状态异常"
             }
-
-        if order.get("amount") is None or order.get("amount") < 0:
+        amount=order.get("amount")
+        if isinstance(amount,bool) or  not isinstance(amount,(int,float)) or amount <=0:
             return {
                 "success": False,
                 "error": f"订单金额异常{order.get('amount') }"

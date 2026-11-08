@@ -13,7 +13,8 @@ SYSTEM_PROMPT = (
 
 TOOL_SCHEMAS = [
     get_schema("query_order"),
-    get_schema("execute_refund")
+    get_schema("execute_refund"),
+    get_schema("permission_check")
 ]
 
 
@@ -102,7 +103,7 @@ class LLMToolAgent(PaymentAgent):
                             f"Error: {key} must be string",
                             "failed"
                         )
-                    elif expected_type == "number" and not isinstance(value, int):
+                    elif expected_type == "number" and not isinstance(value, (int,float)):
                         return self._finish(
                             state,
                             f"Error: {key} must be integer",

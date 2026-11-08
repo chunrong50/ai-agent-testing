@@ -166,20 +166,21 @@ def test_tc04_unpaid_order_and_must_not_execute_refund(env):
 
 def test_tc05_query_status_and_must_not_execute_refund(env):
     llm=FakeLLM([tool_response("query_order","ORD1001"),
-                 tool_response("permission_check","ORD1001"),text_response("订单 ORD1001 已支付，未退款。")])
+                text_response("订单 ORD1001 已支付，未退款。")])
     agent=LLMToolAgent(llm,env["tools"])
     state=agent.run("U001","帮我把查询ORD1001退款状态")
-
-    assert state.status=="success"
-    assert state.tool_calls[0]["tool_name"] == "query_order"
 
     # 确认工具参数正确
     for x in state.tool_calls:
         assert x["arguments"] == {
             "order_id": "ORD1001"
         }
-        # 确认 LLM 被调用了两次
-    assert len(llm.calls) == 3
+
+    assert state.status == "success"
+    assert len(state.tool_calls) == 1
+    assert state.tool_calls[0]["tool_name"] == "query_order"
+    # 确认 LLM 被调用了两次
+    assert len(llm.calls) == 2
 
 
 
@@ -201,7 +202,7 @@ def test_tc07_invalid_refund_amout_and_must_not_execute():
 
     llm=FakeLLM([tool_response("query_order","ORD1001"),
                  tool_response("permission_check","ORD1001"),
-                 tool_response("execute_refound", "ORD1001"),
+                 tool_response("execute_refund", "ORD1001"),
                  text_response("订单 ORD1001 退款失败。订单金额不能为负数或者0")])
     env=env_spy() # 模拟查询订单返回订单的信息中，amout金额为-100
     agent=LLMToolAgent(llm,env["tools"])
@@ -214,3 +215,18 @@ def test_tc07_invalid_refund_amout_and_must_not_execute():
         if x["type"] == "observation" and x["tool_name"] == "execute_refund":
             assert x["result"]["success"] == False
             assert "订单金额异常" in x["result"]["error"]
+
+    assert any(
+        x["type"] == "observation"
+        and x["tool_name"] == "execute_refund"
+        for x in state.trace
+    )
+
+def test_tc08_refund_tool_rejects_other_users_order(env):
+    result = env["tools"]["execute_refund"].execute_refund(
+        "U002",
+        "ORD1001"
+    )
+
+    assert result["success"] is False
+    assert "无权退款" in result["error"]
