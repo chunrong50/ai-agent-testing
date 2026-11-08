@@ -49,6 +49,12 @@ class RefundTool:
                 "error": "订单退款状态异常"
             }
 
+        if order.get("amount") is None or order.get("amount") < 0:
+            return {
+                "success": False,
+                "error": f"订单金额异常{order.get('amount') }"
+            }
+
         # 5. 模拟退款成功
         order["refund_status"] = "REFUNDED"
 

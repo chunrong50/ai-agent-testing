@@ -11,6 +11,10 @@ SYSTEM_PROMPT = (
     "工具返回错误时，如实告知用户，不要编造结果。"
 )
 
+TOOL_SCHEMAS = [
+    get_schema("query_order"),
+    get_schema("execute_refund")
+]
 
 
 class LLMToolAgent(PaymentAgent):
@@ -22,7 +26,7 @@ class LLMToolAgent(PaymentAgent):
                max_steps: 最大工具调用次数
                """
         self.llm = llm
-        self.tools = tools
+        super().__init__(tools)
         self.max_steps = max_steps
 
 
@@ -38,15 +42,14 @@ class LLMToolAgent(PaymentAgent):
         """
         state = AgentState(user_id=user_id, user_input=user_input)
         # 1. 初始化消息上下文
-        messages:list[dict]=[{"role":"user","content": user_input},{"role": "system", "content": SYSTEM_PROMPT},]
-
+        messages:list[dict]=[{"role": "system", "content": SYSTEM_PROMPT},{"role":"user","content": user_input}]
 
 
         # 2. 进入 Tool Calling Loop
         for step in range(self.max_steps):
 
-            # 3. 请求 LLM
-            response=self.llm.chat(messages,tools=self.tools)
+            # 3. 请求 LLM,
+            response=self.llm.chat(messages,tools=TOOL_SCHEMAS) #TOOL_SCHEMAS是给LLM 看的，Python代码的Tools是给Agent看的
             messages.append(response)
 
             state.add_trace("LLM response", response="success", result=response)
@@ -80,10 +83,31 @@ class LLMToolAgent(PaymentAgent):
                     if x not in args:
                         return self._finish(state,f"Error: required {x} not in arguments","failed")
 
-                for arg in args:
-                    if not arg in param["properties"]:
-                        return self._finish(state, f"Error: arguments '{arg}' error","failed")
+                properties = param["properties"]
 
+                for key, value in args.items():
+
+                    if key not in properties:
+                        return self._finish(
+                            state,
+                            f"Error: Unknown argument: {key}",
+                            "failed"
+                        )
+
+                    expected_type = properties[key]["type"]
+
+                    if expected_type == "string" and not isinstance(value, str):
+                        return self._finish(
+                            state,
+                            f"Error: {key} must be string",
+                            "failed"
+                        )
+                    elif expected_type == "number" and not isinstance(value, int):
+                        return self._finish(
+                            state,
+                            f"Error: {key} must be integer",
+                            "failed"
+                        )
 
                 state.add_tool_call(tool_name, args)
 
@@ -91,7 +115,17 @@ class LLMToolAgent(PaymentAgent):
                 try:
                     if tool_name=="query_order":
                         tool_result =self.tools[tool_name].query_order(args["order_id"])
-                    elif tool_name=="refund_tool":
+                    elif tool_name=="permission_check":
+                        order_result = self.tools["query_order"].query_order(args["order_id"])
+                        tool_result = self.tools[tool_name].check_permission(user_id,order_result["data"])
+                        if not tool_result.get("allowed"):
+                            return self._finish(
+                                state,
+                                tool_result["reason"],
+                                "failed"
+                            )
+
+                    elif tool_name=="execute_refund":
                         tool_result = self.tools[tool_name].execute_refund(user_id,args["order_id"])
                 except Exception as e:
                     tool_result = {
@@ -111,7 +145,7 @@ class LLMToolAgent(PaymentAgent):
                 })
 
                 if not tool_result.get("success"):
-                    return self._finish(state, "查询订单失败", "failed")
+                    return self._finish(state, f"工具执行失败:{tool_result['error']}", "failed")
 
 
             # 7. 达到最大调用次数

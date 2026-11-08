@@ -15,6 +15,31 @@ query_order_schema = {
         }
     }
 }
+permission_check_schema = {
+    "type": "function",
+    "function": {
+        "name": "permission_check",
+        "description": (
+            "对指定订单发起权限校验。仅当用户明确要求退款/退钱时使用；"
+            "如果用户只是查询订单或退款状态，不要调用此工具。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "order_id": {
+                    "type": "string",
+                    "description": "需要退款的订单编号，例如 ORD1001",
+                },
+                "amount":{
+                    "type": "number",
+                    "description": "需要退款的金额，例如 400",
+                }
+            },
+            "required": ["order_id"]
+
+        },
+    },
+}
 
 execute_refund_schema = {
     "type": "function",
@@ -30,6 +55,10 @@ execute_refund_schema = {
                 "order_id": {
                     "type": "string",
                     "description": "需要退款的订单编号，例如 ORD1001",
+                },
+                "amount":{
+                    "type": "number",
+                    "description": "需要退款的金额，例如 400",
                 }
             },
             "required": ["order_id"]
@@ -38,11 +67,12 @@ execute_refund_schema = {
     },
 }
 
-schemas = [query_order_schema,execute_refund_schema]
+schemas = [query_order_schema,permission_check_schema,execute_refund_schema]
 
 def get_schema(name):
     for schema in schemas:
         if schema["function"]["name"] == name:
             return schema["function"]
-        else:
-            return None
+
+
+    return None

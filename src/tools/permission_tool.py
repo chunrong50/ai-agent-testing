@@ -4,6 +4,7 @@
 class PermissionTool:
     """用户订单操作权限校验工具。"""
 
+    # order: 整个订单信息，不是订单ID
     def check_permission(self,user_id: str,order: dict) -> dict:
         """验证用户是否有权操作指定订单。"""
         if not isinstance(user_id, str) or not user_id.strip():
