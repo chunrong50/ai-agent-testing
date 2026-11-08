@@ -119,8 +119,9 @@ class LLMToolAgent(PaymentAgent):
                     elif tool_name=="permission_check":
                         order_result = self.tools["query_order"].query_order(args["order_id"])
                         tool_result = self.tools[tool_name].check_permission(user_id,order_result["data"])
-                        state.add_trace("observation", tool_name=tool_name, result=tool_result)
+
                         if not tool_result.get("allowed"):
+                            state.add_trace("observation", tool_name=tool_name, result=tool_result)
                             return self._finish(
                                 state,
                                 tool_result["reason"],
