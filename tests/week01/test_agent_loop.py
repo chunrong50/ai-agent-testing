@@ -112,6 +112,9 @@ def test_tc03_llm_can_get_last_tool_result(env):
     # 第二轮 LLM 请求能够拿到第一轮的 Observation
     assert json.dumps(tool_result) in llm.calls[1]["message"][3]["content"]
 
+    permission_result = {"success": True, "allowed": True, "user_id": "U001", "order_user_id": "U001", "reason": "用户有权操作该订单"}
 
-
+    # 第三轮 LLM 请求能够拿到第二轮的 Observation
+    acutal_permission_result = json.loads(llm.calls[2]["message"][-1]["content"])
+    assert permission_result==acutal_permission_result
 

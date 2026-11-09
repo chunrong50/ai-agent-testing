@@ -21,15 +21,17 @@ TOOL_SCHEMAS = [
 
 class LLMToolAgent(PaymentAgent):
 
-    def __init__(self,llm,tools,max_steps=5):
+    def __init__(self,llm,tools,max_steps=5, max_tool_calls=5):
         """
                llm: 模拟或真实 LLM
                tools: 已注册的 Python 工具
-               max_steps: 最大工具调用次数
+               max_steps: Agent 最大执行轮数
+               max_tool_calls: 工具累计最大调用次数
                """
         self.llm = llm
         super().__init__(tools)
         self.max_steps = max_steps
+        self.max_tool_calls = max_tool_calls
 
 
 
@@ -43,9 +45,11 @@ class LLMToolAgent(PaymentAgent):
         # 1. 初始化消息上下文
         messages:list[dict]=[{"role": "system", "content": SYSTEM_PROMPT},{"role":"user","content": user_input}]
 
-
+        tool_calls_count = 0 # 工具最大的调用次数
         # 2. 进入 Tool Calling Loop
         for step in range(self.max_steps):
+            # max_steps：限制 Agent 的执行轮数。
+            # max_tool_calls：限制工具累计调用次数
 
             # 3. 请求 LLM,
             response=self.llm.chat(messages,tools=TOOL_SCHEMAS) #TOOL_SCHEMAS是给LLM 看的，Python代码的Tools是给Agent看的
@@ -61,12 +65,12 @@ class LLMToolAgent(PaymentAgent):
             if not response.get("tool_calls"):
                 return self._finish(state,response.get("content"))
 
-            tool_call_count=0
+
 
             # 5. 遍历 LLM 返回的工具调用
             for tool_call in response.get("tool_calls"):
                 # 1. 执行前检查是否达到上限
-                if tool_call_count >= self.max_steps:
+                if tool_calls_count >= self.max_tool_calls:
                     return self._finish(
                         state,
                         "Error: Maximum tool calling steps reached",
@@ -74,7 +78,7 @@ class LLMToolAgent(PaymentAgent):
                     )
 
                 # 2. 工具调用计数加 1
-                tool_call_count += 1
+                tool_calls_count += 1
 
 
                 # 5.1 获取工具名称
