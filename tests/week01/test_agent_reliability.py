@@ -6,6 +6,7 @@ from agent.llm_agent import LLMToolAgent
 from tools.order_tool import OrderTool
 from tools.permission_tool import PermissionTool
 from tools.refund_tool import RefundTool
+from utils.tool import tool_response, text_response, tool_response_exception
 
 
 class FakeLLM:
@@ -42,37 +43,6 @@ class MockRefundTool(RefundTool):
 
 
 
-def text_response(content):
-    return {"tool_calls": [], "content": content}
-
-def tool_response(name,order_id):
-
-    return {
-    "tool_calls": [
-        {
-            "name": f"{name}",
-            "arguments": {
-                "order_id": f"{order_id}"
-            }
-        }
-    ],
-    "content": None
-}
-
-
-
-
-def tool_response_exception(name, order_id):
-    return {
-    "tool_calls": [
-        {
-            "name": f"{name}",
-            "arguments": {
-            }
-        }
-    ],
-    "content": None
-}
 
 
 def test_tc01_tool_without_arguments_and_args_check_works(env):

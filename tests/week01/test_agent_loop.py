@@ -14,7 +14,7 @@ import unittest
 import pytest
 
 from agent.llm_agent import LLMToolAgent
-from tests.week01.test_agent_reliability import tool_response, text_response
+from utils.tool import tool_response, text_response
 from tools.order_tool import OrderTool
 from tools.permission_tool import PermissionTool
 from tools.refund_tool import RefundTool
@@ -26,7 +26,7 @@ class FakeLLM:
         self.responses =list(responses)
         self.calls = []
 
-    def chat(self,message,tools:None):
+    def chat(self,message,tools=None):
         self.calls.append({"message":[dict(m) for m in message],"tools":tools})
         if len(self.responses)>0:
             return self.responses.pop(0)
@@ -88,17 +88,18 @@ def test_tc02_no_tool_calls_return_answer(env):
     assert refund.execute_refund.call_count==0
 
 
-def test_tc03(env):
+def test_tc03_llm_can_get_last_tool_result(env):
     # 实现一个 FakeLLM 连续返回两轮不同响应的 Agent，并验证第二轮 LLM 能够获取第一轮 Tool 的执行结果。
-    llm = FakeLLM([tool_response("query_order", "ORD1001"),tool_response("permission_check", "ORD1001")])
+    llm = FakeLLM([tool_response("query_order", "ORD1001"),
+                   tool_response("permission_check", "ORD1001"),
+                   text_response("订单查询成功，当前用户有权访问。")])
     agent = LLMToolAgent(llm, env["tools"])
     state = agent.run("U001", "帮我看一下查询订单 ORD1001")
 
     assert state.status == "success"
-    assert state.tool_calls[0]["tool_name"] == "query_order"
-    assert state.tool_calls[1]["tool_name"] == "permission_check"
+    assert len(llm.calls) == 3
+    assert "订单查询成功" in state.final_response
 
-    assert len(llm.calls)==2
 
     tool_result={
         "order_id": "ORD1001",
@@ -108,8 +109,9 @@ def test_tc03(env):
         "refund_status": "NOT_REFUNDED"
     }
 
-
+    # 第二轮 LLM 请求能够拿到第一轮的 Observation
     assert json.dumps(tool_result) in llm.calls[1]["message"][3]["content"]
+
 
 
 

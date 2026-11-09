@@ -97,7 +97,7 @@ class LLMToolAgent(PaymentAgent):
                 for x in required_params:
                     if x not in args:
                         return self._finish(state,f"Error: required {x} not in arguments","failed")
-                    elif args[x] is None or len(args[x]) == 0:
+                    elif args[x] is None or args[x]== "":
                         return self._finish(state, f"Error: required argument {x}'s value must not empty", "failed")
 
 
@@ -123,7 +123,7 @@ class LLMToolAgent(PaymentAgent):
                     elif expected_type == "number" and not isinstance(value, (int,float)):
                         return self._finish(
                             state,
-                            f"Error: {key} must be integer",
+                            f"Error: {key} must be number",
                             "failed"
                         )
 
@@ -132,6 +132,8 @@ class LLMToolAgent(PaymentAgent):
                 # 5.5 执行工具
                 executor=ToolExecutor(self.tools)
                 tool_result=executor.execute_tool(state,tool_name,user_id,args)
+                # 记录返回结果
+                state.add_trace("observation", tool_name=tool_name, result=tool_result)
 
                 # 6. 将 Observation 返回给 LLM
                 messages.append({
@@ -143,15 +145,16 @@ class LLMToolAgent(PaymentAgent):
                     )
                 })
 
+
                 if not tool_result.get("success"):
                     return self._finish(state, f"工具执行失败:{tool_result['error']}", "failed")
 
+                if tool_name=="permission_check" and not tool_result.get("allowed"):
+                    return self._finish(state, f"权限校验失败:{tool_result['reason']}", "failed")
 
 
 
-            if not self.llm.responses:
-                messages.append(tool_result)
-                return self._finish(state, f"任务完成", "success")
+
 
 
 

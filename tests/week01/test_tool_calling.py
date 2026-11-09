@@ -6,6 +6,7 @@ from agent.llm_agent import LLMToolAgent
 from tools.order_tool import OrderTool
 from tools.permission_tool import PermissionTool
 from tools.refund_tool import RefundTool
+from utils.tool import tool_response, text_response
 
 
 class FakeLLM:
@@ -52,26 +53,6 @@ def env_spy():
     refund_tool=RefundTool(order_tool.orders)
     tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
     return {"tools":tools,"orders":order_tool.orders}
-
-
-
-
-def text_response(content):
-    return {"tool_calls": [], "content": content}
-
-def tool_response(name,order_id):
-
-    return {
-    "tool_calls": [
-        {
-            "name": f"{name}",
-            "arguments": {
-                "order_id": f"{order_id}"
-            }
-        }
-    ],
-    "content": None
-}
 
 
 
