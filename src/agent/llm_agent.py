@@ -2,6 +2,7 @@ import json
 
 from agent.agent import PaymentAgent
 from agent.state import AgentState
+from agent.tool_executor import ToolExecutor
 from schemas.tool_schemas import get_schema
 
 SYSTEM_PROMPT = (
@@ -32,9 +33,6 @@ class LLMToolAgent(PaymentAgent):
 
 
 
-
-
-
     def run(self,user_id,user_input) ->AgentState:
         """
          Agent 主执行入口
@@ -59,10 +57,22 @@ class LLMToolAgent(PaymentAgent):
             if not response.get("tool_calls"):
                 return self._finish(state,response.get("content"))
 
-
+            tool_call_count=0
 
             # 5. 遍历 LLM 返回的工具调用
             for tool_call in response.get("tool_calls"):
+                # 1. 执行前检查是否达到上限
+                if tool_call_count >= self.max_steps:
+                    return self._finish(
+                        state,
+                        "Error: Maximum tool calling steps reached",
+                        "failed"
+                    )
+
+                # 2. 工具调用计数加 1
+                tool_call_count += 1
+
+
                 # 5.1 获取工具名称
                 tool_name=tool_call["name"]
                 # 5.2 获取工具参数
@@ -83,6 +93,9 @@ class LLMToolAgent(PaymentAgent):
                 for x in required_params:
                     if x not in args:
                         return self._finish(state,f"Error: required {x} not in arguments","failed")
+                    elif args[x] is None or len(args[x]) == 0:
+                        return self._finish(state, f"Error: required argument {x}'s value must not empty", "failed")
+
 
                 properties = param["properties"]
 
@@ -113,29 +126,8 @@ class LLMToolAgent(PaymentAgent):
                 state.add_tool_call(tool_name, args)
 
                 # 5.5 执行工具
-                try:
-                    if tool_name=="query_order":
-                        tool_result =self.tools[tool_name].query_order(args["order_id"])
-                    elif tool_name=="permission_check":
-                        order_result = self.tools["query_order"].query_order(args["order_id"])
-                        tool_result = self.tools[tool_name].check_permission(user_id,order_result["data"])
-
-                        if not tool_result.get("allowed"):
-                            state.add_trace("observation", tool_name=tool_name, result=tool_result)
-                            return self._finish(
-                                state,
-                                tool_result["reason"],
-                                "failed"
-                            )
-
-                    elif tool_name=="execute_refund":
-                        tool_result = self.tools[tool_name].execute_refund(user_id,args["order_id"])
-                except Exception as e:
-                    tool_result = {
-                        "success": False,
-                        "error": str(e)
-                    }
-                state.add_trace("observation",tool_name=tool_name,result=tool_result)
+                executor=ToolExecutor(self.tools)
+                tool_result=executor.execute_tool(state,tool_name,user_id,args)
 
                 # 6. 将 Observation 返回给 LLM
                 messages.append({

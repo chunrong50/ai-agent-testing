@@ -1,0 +1,33 @@
+from agent import state
+
+
+class ToolExecutor:
+    def __init__(self,tools):
+        self.tools = tools
+
+    def execute_tool(self,state,tool_name:str,user_id,args) -> dict:
+        try:
+            if tool_name == "query_order":
+                tool_result = self.tools[tool_name].query_order(args["order_id"])
+            elif tool_name == "permission_check":
+                order_result = self.tools["query_order"].orders.get(args["order_id"])
+                tool_result = self.tools[tool_name].check_permission(user_id, order_result)
+                if not tool_result.get("allowed"):
+                    state.add_trace("observation", tool_name=tool_name, result=tool_result)
+                    return self._finish(
+                        state,
+                        tool_result["reason"],
+                        "failed"
+                    )
+
+            elif tool_name == "execute_refund":
+                tool_result = self.tools[tool_name].execute_refund(user_id, args["order_id"])
+        except Exception as e:
+            tool_result = {
+                "success": False,
+                "error": str(e)
+            }
+        state.add_trace("observation", tool_name=tool_name, result=tool_result)
+        return tool_result
+
+

@@ -13,8 +13,3 @@ class MockOrderTool:
         self.called_order_id = order_id
         return self.response
 
-# 加载.env文件
-# load_dotenv()
-# api_key = os.getenv("DEEPSEEK_API_KEY")
-# base_url = os.getenv("DEEPSEEK_BASE_URL")
-# print(api_key)
