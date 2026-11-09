@@ -89,7 +89,7 @@ def test_tc01_query_order_selects_query_tool_with_correct_args(env):
         tool_resp("query_order", {"order_id": "ORD1001"}),
         text_resp("订单 ORD1001 已支付，未退款。"),
     ])
-    state = agent.run("U001", "帮我查一下订单 ORD1001")
+    state = agent.run("U001", "给i他")
 
     assert state.tool_calls == [{"tool_name": "query_order", "arguments": {"order_id": "ORD1001"}}]
     assert env["refund"].calls == []                      # 查询不应触发退款

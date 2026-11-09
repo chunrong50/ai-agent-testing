@@ -71,7 +71,7 @@ def tool_response(name,order_id):
     "content": None
 }
 
-def tool_response_exeception(name,order_id):
+def tool_response_exception(name, order_id):
     return {
     "tool_calls": [
         {
@@ -86,9 +86,13 @@ def tool_response_exeception(name,order_id):
 
 def test_tc01_tool_without_arguments_and_args_check_works(env):
     #Tool 参数缺失或类型错误,参数校验是否可靠
-    llm = FakeLLM([tool_response_exeception("query_order", "ORD1001"), text_response("订单 ORD1001 已支付，未退款。")])
+    llm = FakeLLM([tool_response_exception("query_order", "ORD1001"), text_response("请提供正确的订单号信息。")])
     agent = LLMToolAgent(llm, env["tools"])
     state = agent.run("U001", "帮我查一下订单 ORD1001")
+
+    assert state.status == "failed"
+    assert state.tool_calls == []
+    assert len(llm.calls) == 1
 
 
 
