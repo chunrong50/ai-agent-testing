@@ -133,7 +133,7 @@ def test_tc03_invalid_user_and_must_not_execute_refund(env):
     assert len(llm.calls) == 2
 
 
-def test_tc04_unpaid_order_and_must_not_execute_refund(env):
+def test_tc04_unpaid_order_and_must_reject(env):
     llm=FakeLLM([tool_response("query_order","ORD1002"),
                  tool_response("permission_check","ORD1002"),
                  tool_response("execute_refund","ORD1002"),
