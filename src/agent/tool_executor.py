@@ -6,6 +6,7 @@ class ToolExecutor:
         self.tools = tools
 
     def execute_tool(self,state,tool_name:str,user_id,args) -> dict:
+        state.add_trace("tool call", tool_name=tool_name, result="准备开始工具调用")
         try:
             if tool_name == "query_order":
                 tool_result = self.tools[tool_name].query_order(args["order_id"])

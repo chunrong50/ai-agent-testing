@@ -8,6 +8,7 @@
 超过最大执行轮数	max_steps 能阻止无限循环
 工具执行失败	Agent 能识别和处理工具异常
 """
+import json
 import unittest
 
 import pytest
@@ -27,8 +28,10 @@ class FakeLLM:
 
     def chat(self,message,tools:None):
         self.calls.append({"message":[dict(m) for m in message],"tools":tools})
-        return self.responses.pop(0)
-
+        if len(self.responses)>0:
+            return self.responses.pop(0)
+        else :
+            return None
 
 
 @pytest.fixture
@@ -38,7 +41,6 @@ def env():
     refund_tool=RefundTool(order_tool.orders)
     tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
     return {"tools":tools,"orders":order_tool.orders}
-
 
 
 def test_tc01_normal_turns(env):
@@ -88,4 +90,26 @@ def test_tc02_no_tool_calls_return_answer(env):
 
 def test_tc03(env):
     # 实现一个 FakeLLM 连续返回两轮不同响应的 Agent，并验证第二轮 LLM 能够获取第一轮 Tool 的执行结果。
-    pass
+    llm = FakeLLM([tool_response("query_order", "ORD1001"),tool_response("permission_check", "ORD1001")])
+    agent = LLMToolAgent(llm, env["tools"])
+    state = agent.run("U001", "帮我看一下查询订单 ORD1001")
+
+    assert state.status == "success"
+    assert state.tool_calls[0]["tool_name"] == "query_order"
+    assert state.tool_calls[1]["tool_name"] == "permission_check"
+
+    assert len(llm.calls)==2
+
+    tool_result={
+        "order_id": "ORD1001",
+        "user_id": "U001",
+        "amount": 199.00,
+        "payment_status": "PAID",
+        "refund_status": "NOT_REFUNDED"
+    }
+
+
+    assert json.dumps(tool_result) in llm.calls[1]["message"][3]["content"]
+
+
+

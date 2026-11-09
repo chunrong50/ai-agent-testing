@@ -51,9 +51,13 @@ class LLMToolAgent(PaymentAgent):
             response=self.llm.chat(messages,tools=TOOL_SCHEMAS) #TOOL_SCHEMAS是给LLM 看的，Python代码的Tools是给Agent看的
             messages.append(response)
 
+
             state.add_trace("LLM response", response="success", result=response)
 
             # 4. 判断 LLM 是否要求调用工具
+            if not response:
+                return self._finish(state,"LLM 响应异常任务已结束","failed")
+
             if not response.get("tool_calls"):
                 return self._finish(state,response.get("content"))
 
@@ -141,6 +145,15 @@ class LLMToolAgent(PaymentAgent):
 
                 if not tool_result.get("success"):
                     return self._finish(state, f"工具执行失败:{tool_result['error']}", "failed")
+
+
+
+
+            if not self.llm.responses:
+                messages.append(tool_result)
+                return self._finish(state, f"任务完成", "success")
+
+
 
 
             # 7. 达到最大调用次数
