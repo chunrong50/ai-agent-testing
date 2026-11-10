@@ -339,6 +339,7 @@ Replanning 是今天需要初步认识的新概念。
 
 特别注意第 4 个问题：当前 Agent 本身没有在退款前显式检查 `payment_status`，而是由 `RefundTool` 在执行层再次校验。你需要区分 Agent 的流程控制与工具内部的业务安全校验。
 
+
 ### 任务 2：分析 LLMToolAgent 的动态决策
 
 打开：
