@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass, field
 from typing import Any, Optional
+from uuid import uuid4
 
 
 @dataclass
@@ -13,6 +14,20 @@ class AgentState:
 
     user_id: str
     user_input: str
+
+    # day09 新增字段，为了不影响之前的cases，使用Optional
+    # task_id 能够区分不同任务。
+    # current_step 记录当前执行步骤。
+    # step_states 保存每个 Step 的状态。
+    # step_results 保存每个 Step 的执行结果。
+
+    # 每个任务自动生成唯一 ID
+    task_id: str = field(default_factory=lambda: str(uuid4()))
+    current_step: Optional[str] = None
+
+    step_states: dict[str, Any] = field(default_factory=dict)
+    step_results: list[dict[str, Any]] = field(default_factory=list)
+
 
     # 这两行是"可选字段"，用于订单相关场景，没用到时保持 None
     order_id: Optional[str] = None

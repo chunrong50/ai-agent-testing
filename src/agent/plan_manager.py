@@ -63,12 +63,15 @@ class PlanManager:
 
 
     def mark_completed(self, step_id):
+        step_map={step.step_id: step for step in self.plan.steps}
+        if step_map.get(step_id) is None:
+            return "step_id not found"
+
+
         for step in self.plan.steps:
             if step.step_id == step_id:
                 step.status = "completed"
-
-
-
+        return None
 
     def mark_failed(self, step_id):
         for step in self.plan.steps:
