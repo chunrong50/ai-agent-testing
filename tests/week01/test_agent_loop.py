@@ -9,38 +9,10 @@
 工具执行失败	Agent 能识别和处理工具异常
 """
 import json
-import unittest
-
-import pytest
 
 from agent.llm_agent import LLMToolAgent
+from tests.conftest import FakeLLM
 from utils.tool import tool_response, text_response
-from tools.order_tool import OrderTool
-from tools.permission_tool import PermissionTool
-from tools.refund_tool import RefundTool
-
-
-class FakeLLM:
-
-    def __init__(self,responses):
-        self.responses =list(responses)
-        self.calls = []
-
-    def chat(self,message,tools=None):
-        self.calls.append({"message":[dict(m) for m in message],"tools":tools})
-        if len(self.responses)>0:
-            return self.responses.pop(0)
-        else :
-            return None
-
-
-@pytest.fixture
-def env():
-    order_tool=OrderTool()
-    permission_tool=PermissionTool()
-    refund_tool=RefundTool(order_tool.orders)
-    tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
-    return {"tools":tools,"orders":order_tool.orders}
 
 
 def test_tc01_normal_turns(env):
@@ -62,6 +34,8 @@ def test_tc01_normal_turns(env):
 
     # 确认 订单 ORD1001 已支付，未退款在final_response
     assert "订单 ORD1001 已支付，未退款" in state.final_response
+    # 确认 LLM 被调用了两次
+    assert len(llm.calls) == 2
 
 
 def test_tc02_no_tool_calls_return_answer(env):

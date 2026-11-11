@@ -7,39 +7,53 @@ mark_running(step_id)	将 Step 标记为执行中
 mark_completed(step_id)	将 Step 标记为完成
 mark_failed(step_id)	将 Step 标记为失败
 """
+from typing import List
+
 from agent.planning import Plan, Step
 
 
 class PlanManager:
 
-    def __init__(self, plan: Plan,ready_step:str=None,completed_steps:list[Step]=[]):
+    def __init__(self, plan: Plan):
         self.plan = plan
-        self.ready_step = ready_step if ready_step else self.plan.steps[0].step_id
-        self.completed_steps = completed_steps
+
 
     # 重新设置plan
     def set_plan(self, plan):
-        for step in plan.steps:
-            if step in self.completed_steps:
-                plan.pop(step)
+        self.plan = plan
 
 
 
-    def get_ready_steps(self):
+    def get_ready_steps(self) -> List[Step]:
+        ready_steps = []
+
+        step_map={step.step_id: step for step in self.plan.steps}
+
         for step in self.plan.steps:
-            if step.status == "completed":
-                self.completed_steps.append(step)
-                continue
-            elif step.status == "pending" and not step.depends_on:
-                self.ready_step=step.step_id
-                return self.ready_step
-            elif step.status == "pending" and step.depends_on:
-                for step_id in step.depends_on:
-                    if step_id not in self.completed_steps:
-                        self.ready_step = step_id
-                        return self.ready_step
+            # 只考虑等待执行的 Step
+            if step.status == "pending":
+                if not step.depends_on:
+                    ready_steps.append(step)
 
-        return  self.ready_step
+                else:
+                    dependencies_completed=True
+                    for dependency_id in step.depends_on:
+                        dependency = step_map.get(dependency_id)
+                        if dependency is None :
+                            dependencies_completed = False
+                            break
+
+                        if dependency.status != "completed":
+                            dependencies_completed = False
+                            break
+
+                    if dependencies_completed:
+                        ready_steps.append(step)
+
+        return ready_steps
+
+
+
 
 
     def mark_running(self, step_id):
@@ -49,15 +63,10 @@ class PlanManager:
 
 
     def mark_completed(self, step_id):
-        flag=False
         for step in self.plan.steps:
-            if flag:
-                self.ready_step=step.step_id
-                break
             if step.step_id == step_id:
                 step.status = "completed"
-                flag=True
-                self.completed_steps.append(step)
+
 
 
 
@@ -66,7 +75,3 @@ class PlanManager:
             if step.step_id == step_id:
                 step.status = "failed"
 
-    def mark_skipped(self, step_id):
-        for step in self.plan.steps:
-            if step.step_id == step_id:
-                step.status = "skipped"
