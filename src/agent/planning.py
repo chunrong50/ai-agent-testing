@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 
 @dataclass
@@ -9,6 +9,7 @@ class Step:
     task:str
     depends_on:list[str]=field(default_factory=list)
     status: str = "pending"
+    order_id: Optional[str] = None
 
 
 

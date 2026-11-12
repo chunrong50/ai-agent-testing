@@ -15,6 +15,7 @@ class MockOrderTool:
 
 
 
+
 def text_response(content):
     # 模拟LLM的文本响应结果
     return {"tool_calls": [], "content": content}

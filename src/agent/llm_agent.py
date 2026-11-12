@@ -19,6 +19,9 @@ TOOL_SCHEMAS = [
 ]
 
 
+
+# 根据LLM返回的工具列表来控制流程执行
+
 class LLMToolAgent(PaymentAgent):
 
     def __init__(self,llm,tools,max_steps=5, max_tool_calls=5):
@@ -134,8 +137,9 @@ class LLMToolAgent(PaymentAgent):
                 state.add_tool_call(tool_name, args)
 
                 # 5.5 执行工具
+                order_id=args["order_id"]
                 executor=ToolExecutor(self.tools)
-                tool_result=executor.execute_tool(state,tool_name,user_id,args)
+                tool_result=executor.execute_tool(tool_name,user_id,order_id)
                 # 记录返回结果
                 state.add_trace("observation", tool_name=tool_name, result=tool_result)
 

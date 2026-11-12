@@ -14,22 +14,26 @@ from agent.planning import Plan, Step
 
 class PlanManager:
 
-    def __init__(self, plan: Plan):
+    def __init__(self, plan: Plan=None):
         self.plan = plan
 
-
-    # 重新设置plan
+    # 设置plan
     def set_plan(self, plan):
         self.plan = plan
 
 
 
+
     def get_ready_steps(self) -> List[Step]:
         ready_steps = []
+        steps=self.plan.steps
 
-        step_map={step.step_id: step for step in self.plan.steps}
+        if not steps:
+            return ready_steps
+        # 1. 构建映射表，方便快速查找
+        step_map={step.step_id: step for step in steps}
 
-        for step in self.plan.steps:
+        for step in steps:
             # 只考虑等待执行的 Step
             if step.status == "pending":
                 if not step.depends_on:
@@ -52,29 +56,29 @@ class PlanManager:
 
         return ready_steps
 
+    def update_step_status(self, step_id: int, status: str):
 
+        step_map = {step.step_id: step for step in self.plan.steps}
+        # "step_id not found"
+        if step_map.get(step_id) is None:
+            return False
 
-
-
-    def mark_running(self, step_id):
         for step in self.plan.steps:
             if step.step_id == step_id:
-                step.status = "running"
+                step.status = status
+                return True
+        return None
+
+    def mark_running(self, step_id):
+        self.update_step_status(step_id, "running")
 
 
     def mark_completed(self, step_id):
-        step_map={step.step_id: step for step in self.plan.steps}
-        if step_map.get(step_id) is None:
-            return "step_id not found"
+        self.update_step_status(step_id, "completed")
 
-
-        for step in self.plan.steps:
-            if step.step_id == step_id:
-                step.status = "completed"
-        return None
 
     def mark_failed(self, step_id):
-        for step in self.plan.steps:
-            if step.step_id == step_id:
-                step.status = "failed"
+        self.update_step_status(step_id, "failed")
+
+
 

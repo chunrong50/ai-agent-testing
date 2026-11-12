@@ -7,6 +7,8 @@ from typing import Any, Optional
 from src.agent.state import AgentState
 
 
+# 根据关键字来决定执行流程
+
 class PaymentAgent:
     """最小电商支付 Agent 执行框架。"""
 

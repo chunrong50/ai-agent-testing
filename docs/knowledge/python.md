@@ -103,3 +103,48 @@ class LLMAgent(PaymentAgent):
 `Protocol` 只有在**类型检查阶段**生效，**运行时不强制**。也就是说，你传一个没有 `chat` 方法的对象进去，Python 不会在构造时报错，只有等到 `self.llm.chat(...)` 调用时才会抛 `AttributeError`。如果希望在运行时也校验，可以用 `@runtime_checkable` 装饰器 + `isinstance()` 检查，但通常没必要——静态类型检查 + 明确的接口约定已经足够了。
 
 总结一句话：**没有方法体，是因为 `Protocol` 类只定义"契约"而不提供"实现"，`...` 就是给类型系统和开发者看的接口签名占位符。**
+
+
+依赖图、拓扑排序的理解
+```aiignore
+    from typing import List
+
+    def get_ready_steps(self) -> List[Step]:
+        step_map = {step.step_id: step for step in self.plan.steps}
+
+        # 1. 只保留 pending 步骤
+        pending_steps = [step for step in self.plan.steps if step.status == "pending"]
+
+        # 2. 构建 pending 步骤的依赖图
+        in_degree = {step.step_id: 0 for step in pending_steps}
+        dependents = {step.step_id: [] for step in pending_steps}
+
+        for step in pending_steps:
+            if step.depends_on:
+                for dep_id in step.depends_on:
+                    dep = step_map.get(dep_id)
+                    if dep is None or dep.status != "completed":
+                        # 依赖未完成或不存在，当前 pending 步骤暂时不能进入执行序列
+                        in_degree[step.step_id] += 1
+                    else:
+                        # 依赖已完成，相当于对 pending 步骤没有阻塞
+                        pass
+
+        # 3. 拓扑排序：收集所有可以按顺序执行的 pending 步骤
+        queue = [step_id for step_id, deg in in_degree.items() if deg == 0]
+        ready_steps: List[Step] = []
+
+        while queue:
+            step_id = queue.pop(0)
+            step = step_map[step_id]
+            ready_steps.append(step)
+
+            for next_step in pending_steps:
+                if next_step.depends_on and step_id in next_step.depends_on:
+                    in_degree[next_step.step_id] -= 1
+                    if in_degree[next_step.step_id] == 0:
+                        queue.append(next_step.step_id)
+
+        return ready_steps
+
+```

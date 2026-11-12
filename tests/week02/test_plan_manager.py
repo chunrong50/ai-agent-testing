@@ -11,17 +11,6 @@ T05	step2 失败	不允许执行 step3
 from agent.plan_manager import PlanManager
 from agent.planning import Step, Plan
 
-def test_00_refund_plan():
-    step1=Step(step_id="step01",task="query_order")
-    step2=Step(step_id="step02",task="permission_check",depends_on=["step01"])
-    step3 = Step(step_id="step03", task="execute_refund", depends_on=["step02"])
-
-    plan=Plan(steps=[step1, step2, step3])
-
-    assert plan.status=="pending"
-    assert step1.status=="pending"
-    assert step2.status=="pending"
-    assert step3.status=="pending"
 
 
 def test_01_create_plan():

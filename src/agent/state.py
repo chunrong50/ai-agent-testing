@@ -20,13 +20,29 @@ class AgentState:
     # current_step 记录当前执行步骤。
     # step_states 保存每个 Step 的状态。
     # step_results 保存每个 Step 的执行结果。
+    #step_states = {
+#     "query_order": "completed",
+#     "check_permission": "failed",
+#     "execute_refund": "pending"
+# }
+#
+# step_results = {
+#     "query_order": {
+#         "success": True,
+#         "order_id": "ORD10086"
+#     },
+#     "check_permission": {
+#         "success": False,
+#         "error": "permission denied"
+#     }
+# }
 
     # 每个任务自动生成唯一 ID
     task_id: str = field(default_factory=lambda: str(uuid4()))
     current_step: Optional[str] = None
 
     step_states: dict[str, Any] = field(default_factory=dict)
-    step_results: list[dict[str, Any]] = field(default_factory=list)
+    step_results: dict[str, Any] = field(default_factory=dict)
 
 
     # 这两行是"可选字段"，用于订单相关场景，没用到时保持 None
