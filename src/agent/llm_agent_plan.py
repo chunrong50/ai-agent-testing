@@ -58,12 +58,14 @@ class LLMPlanAgent(LLMToolAgent):
 
                     for s in steps:
                         state.current_step=s.step_id
-                        state.step_states[s.task]="pending"
+                        state.step_states[s.task]="running"
+                        s.status = "running"
 
-                        tool_result=ToolExecutor(self.tools).execute_tool(s.task,user_id,s.order_id)
-                        if "error" in tool_result and "db timeout" in tool_result["error"]:
+                        executor=ToolExecutor(tools=self.tools)
+                        tool_result=executor.execute_tool(s.task,user_id,s.order_id)
+                        if  tool_result.get("error") and "db timeout" in tool_result["error"]:
                             # 技术异常可以重试
-                            tool_result = ToolExecutor(self.tools).execute_tool(s.task, user_id, s.order_id)
+                            tool_result = executor.execute_tool(s.task, user_id, s.order_id)
 
 
                         state.step_results[s.task]=tool_result
@@ -81,12 +83,13 @@ class LLMPlanAgent(LLMToolAgent):
                         if not tool_result.get("success"):
                             state.step_states[s.task]="failed"
                             self.manager.mark_failed(s.step_id)
-
+                            self.manager.plan.status="failed"
                             return self._finish(state, f"工具执行失败:{tool_result['error']}", "failed")
 
                         if s.task == "permission_check" and not tool_result.get("allowed"):
                             state.step_states[s.task] = "failed"
                             self.manager.mark_failed(s.step_id)
+                            self.manager.plan.status = "failed"
                             return self._finish(state, f"权限校验失败:{tool_result['reason']}", "failed")
 
                         state.step_states[s.task] ="completed"

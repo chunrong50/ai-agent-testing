@@ -1,3 +1,6 @@
+from copy import deepcopy
+from typing import Optional
+
 import pytest
 
 from agent.plan_manager import PlanManager
@@ -20,8 +23,38 @@ class FakeLLM:
         return self.responses.pop(0)
 
 class TimeoutOrderTool(OrderTool):
+
     def query_order(self, order_id):
         raise TimeoutError("db timeout")
+
+
+class TimeoutRetryOrderTool(OrderTool):
+    def __init__(self,orders: Optional[dict] = None,retry=0):
+        super().__init__(orders)
+        self.retry=retry
+
+    def query_order(self, order_id):
+        if self.retry>0:
+            self.retry-=1
+            raise TimeoutError("db timeout")
+        else:
+            #重试成功
+            order = self.orders.get(order_id.strip())
+            return {
+                "success": True,
+                "data": deepcopy(order)
+            }
+
+@pytest.fixture
+def env_timeout_retry_order_tool():
+    order_tool=TimeoutRetryOrderTool(retry=1)
+    permission_tool=PermissionTool()
+    refund_tool=RefundTool(order_tool.orders)
+    tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
+    return {"tools":tools,"orders":order_tool.orders}
+
+
+
 
 
 @pytest.fixture
@@ -31,6 +64,9 @@ def env_timeout_order_tool():
     refund_tool=RefundTool(order_tool.orders)
     tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
     return {"tools":tools,"orders":order_tool.orders}
+
+
+
 
 
 

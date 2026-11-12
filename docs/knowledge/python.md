@@ -105,7 +105,7 @@ class LLMAgent(PaymentAgent):
 总结一句话：**没有方法体，是因为 `Protocol` 类只定义"契约"而不提供"实现"，`...` 就是给类型系统和开发者看的接口签名占位符。**
 
 
-依赖图、拓扑排序的理解
+todo: 学习依赖图、拓扑排序的理解
 ```aiignore
     from typing import List
 
