@@ -1,14 +1,11 @@
 from agent.llm_agent_plan import LLMPlanAgent
 from agent.planning import Step, Plan
 from tests.conftest import FakeLLM
-from tests.week01.test_tool_calling_ai import text_resp
 from utils.tool import text_response
 
 
 def test_01_normal_trace(env):
     step1=Step(step_id="step01", task="query_order", order_id="ORD1001",depends_on=[])
-    # step2 = Step(step_id="step02", task="permission_check", order_id="ORD1001")
-    # step3 = Step(step_id="step03", task="execute_refund", order_id="ORD1001")
     llm=FakeLLM([Plan(steps=[step1]),text_response("订单ORD1001查询成功")])
 
     agent=LLMPlanAgent(llm,env["tools"])
@@ -22,37 +19,45 @@ def test_01_normal_trace(env):
 
     assert state.step_states.get("query_order")=="completed"
 
-    assert state.trace[0]["type"]=="llm_decision"
-    assert state.trace[0]["steps"]== [{'step_id': 'step01', 'task': 'query_order', 'depends_on': []}]
+    llm_decision = [event for event in state.trace if event["type"] == "llm_decision"]
+    assert len(llm_decision) == 1
+    assert llm_decision[0]["steps"]== [{'step_id': 'step01', 'task': 'query_order', 'depends_on': []}]
     #
-    trace1= state.trace[1]
-    assert trace1["type"]=="step_update" and trace1["step_id"]==step1.step_id  and trace1["status"]=="running"
 
-    trace2= state.trace[2]
-    assert trace2["type"] == "tool_execution" and trace2["step_id"] == step1.step_id
-    assert trace2["attempt"]==1 and trace2["status"]=="running"
-    #
-    trace3= state.trace[3]
-    assert trace3["type"] == "tool_execution" and trace3["step_id"] == step1.step_id
-    assert trace3["attempt"]==1 and trace3["status"]=="success" and trace3["result"]["success"]==True
+    update=[event for event in state.trace if event["type"] == "step_update"]
+    assert len(update)==2
+    assert update[0]["status"]=="running"
+    assert update[1]["status"] == "completed"
 
-    #
-    trace4 = state.trace[4]
-    assert trace4["type"] == "observation" and trace4["step_id"] == step1.step_id and trace4["result"]["success"]==True
+    execution = [event for event in state.trace if event["type"] == "tool_execution"]
+    assert len(execution) == 2
+    assert execution[0]["status"] == "running"
+    assert execution[1]["status"] == "success"
 
-    trace5 = state.trace[5]
-    assert trace5["type"] == "step_update" and trace5["step_id"] == step1.step_id and trace5["status"] == "completed"
-    #
-    trace6 = state.trace[6]
-    assert trace6["type"] == "final_response" and trace6["content"] == "订单ORD1001查询成功" and trace6["status"] == "success"
+    observation = [event for event in state.trace if event["type"] == "observation"]
+    assert len(observation) == 1
+    assert observation[0]["result"]["success"]==True
+
+    final = [event for event in state.trace if event["type"] == "final_response"]
+    assert len(final) == 1
+    assert final[0]["content"] == "订单ORD1001查询成功" and final[0]["status"] == "success"
+
+    event_types = [event["type"] for event in state.trace]
+    assert event_types.index("llm_decision") < event_types.index("tool_execution")
+    assert event_types.index("observation") < event_types.index("final_response")
 
 
 
 def test_02_trace_when_permission_check_not_allowed(env):
-    step1=Step(step_id="step01", task="query_order", order_id="ORD1001",depends_on=[])
-    step2 = Step(step_id="step02", task="permission_check", order_id="ORD1001")
+    from unittest.mock import Mock
+    execute_refund=env["tools"]["execute_refund"]
+    execute_refund.execute_refund = Mock(wraps=execute_refund.execute_refund)
 
-    llm=FakeLLM([Plan(steps=[step1,step2])])
+    step1=Step(step_id="step01", task="query_order", order_id="ORD1001",depends_on=[])
+    step2 = Step(step_id="step02", task="permission_check", order_id="ORD1001",depends_on=["step01"])
+    step3 = Step(step_id="step03", task="execute_refund", depends_on=["step02"], order_id="ORD1001")
+
+    llm=FakeLLM([Plan(steps=[step1,step2,step3])])
 
     agent=LLMPlanAgent(llm,env["tools"])
 
@@ -64,12 +69,18 @@ def test_02_trace_when_permission_check_not_allowed(env):
     assert step2.status=="failed"
     assert "用户无权操作该订单" in state.final_response
 
-    trace=state.trace[9]
-    assert trace["type"] == "observation"
-    assert trace["step_id"] == "step02"
-    assert trace["result"]["success"] == True
-    assert trace["result"]["allowed"] == False
-    assert trace["result"]["reason"] == "用户无权操作该订单"
+    observation = [event for event in state.trace if event["type"] == "observation"]
+    assert len(observation) == 2
+    assert observation[1]["type"] == "observation"
+    assert observation[1]["step_id"] == "step02"
+    assert observation[1]["result"]["success"] == True
+    assert observation[1]["result"]["allowed"] == False
+    assert observation[1]["result"]["reason"] == "用户无权操作该订单"
+
+    assert execute_refund.execute_refund.call_count==0
+    assert agent.manager.plan.steps[2].status == "pending"
+
+
 
 
 
@@ -94,16 +105,23 @@ def test_03_trace_when_timeout_retry(env_timeout_retry_order_tool):
      assert state.step_states.get("query_order")=="completed"
      assert state.step_states.get("permission_check") == "completed"
 
+     result=state.step_results.get("permission_check")
+     assert result["success"]==True
+     assert result["allowed"] == True
+     assert result["reason"] == "用户有权操作该订单"
+
      assert query_order.query_order.call_count == 2
      assert permission_check.check_permission.call_count == 1
 
-     trace_3=state.trace[3]
-     assert trace_3["type"] == "tool_execution" and trace_3["step_id"] == "step01" and trace_3["attempt"]==1 and trace_3["status"]=="failed"
 
-     trace_4 = state.trace[4]
-     assert trace_4["type"] == "tool_retry" and trace_4["step_id"] == "step01" and trace_4["attempt"] == 2 and \
-            trace_4["reason"] == "db_timeout"
+     tool_events=[event for event in state.trace if event["type"]=="tool_execution" and event["step_id"] == "step01"]
 
-     trace_5 = state.trace[5]
-     assert trace_5["type"] == "tool_execution" and trace_5["step_id"] == "step01" and trace_5["attempt"] == 2 and \
-            trace_5["status"] == "success"
+     assert len(tool_events) == 3
+     assert tool_events[0]["attempt"] == 1
+     assert tool_events[0]["status"] == "running"
+     assert tool_events[1]["attempt"] == 1
+     assert tool_events[1]["status"] == "failed"
+     assert tool_events[2]["attempt"] == 2
+     assert tool_events[2]["status"] == "success"
+
+
