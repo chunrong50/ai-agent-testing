@@ -254,6 +254,256 @@ step03 execute_refund    completed
 
 今天的核心不是学会记录日志，而是学会像一个 AI Agent 测试工程师一样，通过执行链路定位问题。
 
-如果你希望明天继续时收到提醒，可以设置：
 
-📚明天提醒我继续 Day 10 验收轻点设置
+这次补充的代码很关键。现在我们已经能看清楚你当前 `LLMPlanAgent` 的主要数据流了。
+
+我的判断是：**你的&#x20;**`add_trace()`**&#x20;基础实现可以继续使用，不需要重写；目前真正需要做的是在 Agent 执行的关键节点增加 Trace 事件。**
+
+而且，我发现一个值得注意的问题：你目前已经记录了 Observation，但还没有记录 LLM 的决策、Tool 的实际调用过程，以及 Agent 的流程决策。
+
+我们逐步来。
+
+## **一、先检查你现有的代码**
+
+### **1.&#x20;**`add_trace()`**：实现可以保留**
+
+你现在的实现：
+
+```
+def add_trace(    self,    step_type: str,    **details: Any) -> None:    """记录一次执行轨迹。"""    self.trace.append({        "step": len(self.trace) + 1,        "type": step_type,        **details    })
+```
+
+可以保留
+
+它的设计比较简单：
+
+- `step`：记录事件发生的顺序。
+- `type`：记录事件类型。
+- `details`：记录事件的具体内容。
+
+例如：
+
+```
+state.add_trace(    "tool_execution",    tool_name="query_order",    status="completed")
+```
+
+最终得到：
+
+```
+{    "step": 1,    "type": "tool_execution",    "tool_name": "query_order",    "status": "completed"}
+```
+
+这里的 `step` 实际上是 Trace Event 序号，不是 Plan Step ID。
+
+建议后续将字段名改成 `event_id` 或 `sequence`，避免与 Plan 中的 Step 混淆。但这不是当前必须修改的内容。
+
+### **2. LLM 调用：缺少决策记录**
+
+你目前：
+
+```
+response = self.llm.chat(    messages,    tools=TOOL_SCHEMAS)if not response:    return self._finish(        state,        "LLM 响应异常任务已结束",        "failed"    )if isinstance(response, Plan):    self.manager.set_plan(response)    self.manager.plan.status = "running"
+```
+
+建议在解析出 Plan 后记录：
+
+```
+if isinstance(response, Plan):    self.manager.set_plan(response)    self.manager.plan.status = "running"    state.add_trace(        "llm_decision",        decision="plan_generated",        steps=[            {                "step_id": s.step_id,                "task": s.task,                "depends_on": s.depends_on            }            for s in response.steps        ]    )
+```
+
+为什么不直接记录整个 `response`？
+
+因为我们真正关心的是：
+
+- LLM 规划了哪些任务？
+- 任务执行顺序是什么？
+- 任务之间有什么依赖关系？
+
+这些信息已经足以帮助测试人员判断 Planning 是否正确。
+
+### **3. Tool 执行：目前缺少调用过程**
+
+这是今天最重要的修改位置。
+
+你目前：
+
+```
+executor = ToolExecutor(tools=self.tools)tool_result = executor.execute_tool(    s.task, user_id, s.order_id)if tool_result.get("error") and "db timeout" in tool_result["error"]:    tool_result = executor.execute_tool(        s.task, user_id, s.order_id    )
+```
+
+建议先修改为：
+
+```
+executor = ToolExecutor(tools=self.tools)# 第一次调用state.add_trace(    "tool_execution",    step_id=s.step_id,    tool_name=s.task,    attempt=1,    status="running")tool_result = executor.execute_tool(    s.task, user_id, s.order_id)state.add_trace(    "tool_execution",    step_id=s.step_id,    tool_name=s.task,    attempt=1,    status="success" if tool_result.get("success") else "failed",    result=tool_result)# 超时重试if tool_result.get("error") and "db timeout" in tool_result["error"]:    state.add_trace(        "tool_retry",        step_id=s.step_id,        tool_name=s.task,        attempt=2,        reason="db_timeout"    )    tool_result = executor.execute_tool(        s.task, user_id, s.order_id    )    state.add_trace(        "tool_execution",        step_id=s.step_id,        tool_name=s.task,        attempt=2,        status="success" if tool_result.get("success") else "failed",        result=tool_result    )
+```
+
+这样我们就能区分：
+
+```
+query_order
+  attempt 1: failed
+  error: db timeout
+
+  retry
+  attempt 2: success
+```
+
+注意：这里的 `success` 是工具执行结果，不代表业务校验通过。另外，真实项目中记录 `result` 时应过滤敏感数据。
+
+## **二、Observation：你的代码已经有基础记录**
+
+你目前：
+
+```
+state.step_results[s.task] = tool_resultstate.add_trace(    "observation",    tool_name=s.task,    result=tool_result)messages.append({    "role": "tool",    "name": s.task,    "content": json.dumps(        tool_result,        ensure_ascii=False    )})
+```
+
+这部分基本正确。
+
+不过，为了让 Trace 更容易排查问题，我建议记录 Step ID：
+
+```
+state.add_trace(    "observation",    step_id=s.step_id,    tool_name=s.task,    result=tool_result)
+```
+
+这样我们可以通过 `step_id` 将以下数据关联起来：
+
+```
+Plan Step
+   ↓
+Tool Execution
+   ↓
+Tool Result
+   ↓
+Observation
+   ↓
+Agent State
+```
+
+还有一点：你现在的 `messages.append()` 才是把工具结果传给下一轮 LLM 的位置。Trace 中的 Observation 记录和实际传递给 LLM 的内容应该保持一致。
+
+## **三、Step 状态更新：增加状态变化记录**
+
+你之前的代码：
+
+```
+state.step_states[s.task] = "running"s.status = "running"
+```
+
+建议增加：
+
+```
+state.add_trace(    "step_update",    step_id=s.step_id,    task=s.task,    status="running")
+```
+
+成功时：
+
+```
+state.step_states[s.task] = "completed"self.manager.mark_completed(s.step_id)state.add_trace(    "step_update",    step_id=s.step_id,    task=s.task,    status="completed")
+```
+
+失败时也要记录：
+
+```
+state.step_states[s.task] = "failed"self.manager.mark_failed(s.step_id)state.add_trace(    "step_update",    step_id=s.step_id,    task=s.task,    status="failed")
+```
+
+权限拒绝时，最好记录具体业务原因：
+
+```
+state.add_trace(    "agent_decision",    action="stop",    reason="permission_denied",    step_id=s.step_id)
+```
+
+这里再次提醒：当前代码把 `allowed=False` 对应的 Step 标记成 `failed`。本次先保持现有逻辑，不要求你重构状态模型。我们先把执行事实记录完整。
+
+## **四、最终需要形成的 Trace**
+
+假设订单查询成功，但用户没有退款权限。
+
+你的 Trace 最终应该能够还原：
+
+**trace_001**
+
+可还原执行链路
+
+1. **llm_decision**
+
+   生成 Plan：query_order → permission_check → execute_refund
+2. **step_update**
+
+   query_order：running
+3. **tool_execution**
+
+   query_order：attempt 1，success
+4. **observation**
+
+   order_status = paid
+5. **step_update**
+
+   query_order：completed
+6. **tool_execution**
+
+   permission_check：success
+7. **observation**
+
+   allowed = false
+8. **agent_decision**
+
+   stop，reason = permission_denied
+
+**最终状态**
+
+- query_order：completed
+- permission_check：failed（按照当前代码）
+- execute_refund：pending
+- execute_refund 调用次数：0
+
+这时测试人员就能判断：工具调用正常，权限检查返回拒绝，Agent 正确终止，没有执行退款。
+
+## **五、我发现的两个额外问题**
+
+这两个问题不需要现在马上改，但需要你知道。
+
+**问题 1：重复判断**
+
+你贴出的代码：
+
+```
+if not response:    if not response:        return self._finish(...)
+```
+
+这里存在重复判断，保留一层即可。
+
+**问题 2：**`step_results`**&#x20;使用 task 作为 Key**
+
+```
+state.step_results[s.task] = tool_result
+```
+
+如果一个 Plan 中有两个相同 task，例如两次订单查询，后一次结果会覆盖前一次。
+
+以后可以考虑使用 `step_id` 作为 Key。不过目前 Day 10 不要求修改。
+
+## **六、现在进入你的代码实践**
+
+这次先不要一次性修改所有内容。
+
+请完成下面三个工作：
+
+1. 在 LLM 生成 Plan 后增加 `llm_decision` Trace。
+2. 在 ToolExecutor 调用前后增加 `tool_execution` Trace，并记录重试。
+3. 在 Step 状态更新、Agent 终止的位置增加 `step_update` 和 `agent_decision` Trace。
+
+然后编写三个测试：
+
+| 测试   | 需要验证的核心行为                                            |
+| ---- | ---------------------------------------------------- |
+| TC01 | 正常执行时，Trace 能还原 Plan、Tool、Observation、Step 状态的顺序     |
+| TC02 | 权限拒绝时，Trace 能记录 `allowed=False`，Agent 停止，退款工具调用次数为 0 |
+| TC03 | Tool 超时后重试，Trace 能记录第一次失败、第二次成功及调用次数                 |
+
+**验收重点：** 不只是检查 Trace 里面有没有某个字段，而是验证 Trace 与实际 Tool 调用、Agent State、Plan 状态是否一致。
+
+等你提交后，我会重点检查是否存在 Trace 记录正确但实际 Agent 行为错误的情况。这也是今天最有价值的测试能力。
+
+📚明天继续 Day 10 Trace 测试评审轻点设置

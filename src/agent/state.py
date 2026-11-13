@@ -82,7 +82,7 @@ class AgentState:
         """记录一次执行轨迹。"""
 
         self.trace.append({
-            "step": len(self.trace) + 1,
+            "event_id": len(self.trace) + 1,
             "type": step_type,
             **details
         })

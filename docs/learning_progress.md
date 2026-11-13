@@ -15,7 +15,7 @@
 | Day6 |Tool Calling 自动化测试  | 已通过| 88 |src/agent/llm_agent.py |tests/week01/test_agent_reliability.py|补充了Python高级用法,参考langchain-course 项目 |
 | Day7 | Agent 架构与执行链路 | 已通过|87  |src/agent/llm_agent.py,state.py |tests/week01/test_agent_loop.py | |
 | Day8 | Agent planning与Decision | 已通过| 95|src/agent/planning.py,plan_manager.py |tests/week02/test_plan_manager.py | |
-| Day9 | Agent Executor与Plan 执行控制| | || | |
-| Day10 | | | || | |
+| Day9 | Agent Executor与Plan 执行控制|已通过 | |src/agent/llm_agent_plan.py| tests/week02/test_agent_executor.py| |
+| Day10 |Agent Trace &Debugging | | |src/agent/llm_agent_plan.py,state.py|tests/week02/test_agent_trace.py | |
 | Day11 | | | || | |
 
