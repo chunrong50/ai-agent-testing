@@ -1,14 +1,12 @@
+import copy
 from copy import deepcopy
 from typing import Optional
 
 import pytest
-
-from agent.plan_manager import PlanManager
-from agent.planning import Plan
 from tools.order_tool import OrderTool
 from tools.permission_tool import PermissionTool
 from tools.refund_tool import RefundTool
-from schemas.tool_schemas import get_schema
+
 
 
 
@@ -19,7 +17,8 @@ class FakeLLM:
         self.calls = []
 
     def chat(self,message,tools=None):
-        self.calls.append({"message":[dict(m) for m in message],"tools":tools})
+        # [dict(m) for m in message]
+        self.calls.append({"message":copy.deepcopy(message),"tools":copy.deepcopy(tools)})
         return self.responses.pop(0)
 
 class TimeoutOrderTool(OrderTool):

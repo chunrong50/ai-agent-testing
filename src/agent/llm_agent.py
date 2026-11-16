@@ -56,7 +56,8 @@ class LLMToolAgent(PaymentAgent):
 
             # 3. 请求 LLM,
             response=self.llm.chat(messages,tools=TOOL_SCHEMAS) #TOOL_SCHEMAS是给LLM 看的，Python代码的Tools是给Agent看的
-            messages.append(response)
+
+            messages.append({"role": "assistant", "content": response})
 
 
             state.add_trace("LLM response", response="success", result=response)

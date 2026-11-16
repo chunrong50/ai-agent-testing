@@ -1,6 +1,7 @@
 import json
 
 from agent.llm_agent import LLMToolAgent
+from agent.memory import ShortTermMemory, build_context
 from agent.plan_manager import PlanManager
 from agent.planning import Plan
 from agent.state import AgentState
@@ -22,13 +23,14 @@ TOOL_SCHEMAS = [
 ]
 
 
-# 具有planning 能力的Agent
+# 具有planning能力的Agent, 跟进LLM返回的plan来规划执行路径
 
 class LLMPlanAgent(LLMToolAgent):
-    def __init__(self, llm,tools,max_steps=5):
+    def __init__(self, llm,tools,memory:ShortTermMemory=None,max_steps=5):
         self.manager = PlanManager(Plan())
         self.tools = tools
         self.max_steps = max_steps
+        self.memory = memory
         super().__init__(llm,tools,max_steps)
 
 
@@ -39,11 +41,27 @@ class LLMPlanAgent(LLMToolAgent):
         state=AgentState(user_id,user_input)
         # 1. 初始化消息上下文
         messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_input}]
+        try:
+            if self.memory:
+                # 获取历史消息
+                if self.memory.messages:
+                    messages.extend(self.memory.messages)
+
+                if self.memory.context:
+                    # 过滤无关信息
+                    context=build_context(self.memory,["user_id","order_id","previous_action","previous_result"])
+                    messages.append({"context":context})
+        except Exception:
+            # Memory 异常时，不阻断 Agent 的基本执行
+            pass
 
         for turn in range(self.max_steps):
             response=self.llm.chat(messages,tools=TOOL_SCHEMAS)
+
             if not response:
                 return self._finish(state, "LLM 响应异常任务已结束", "failed")
+
+            messages.append({"role": "assistant", "content": response})
 
             if isinstance(response, Plan):
                 self.manager.set_plan(response)
@@ -55,8 +73,7 @@ class LLMPlanAgent(LLMToolAgent):
                 ])
 
 
-                while(self.manager.get_ready_steps()):
-
+                while (self.manager.get_ready_steps()):
                     steps=self.manager.get_ready_steps()
                     if not steps:
                         return self._finish(state, "LLM 无任务规划或者任务已完成直接结束")

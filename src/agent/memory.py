@@ -4,6 +4,7 @@
 # retrieve()	查询记忆
 # update()	更新记忆
 # delete()	删除记忆
+from typing import Any
 
 
 class ShortTermMemory:
@@ -24,7 +25,7 @@ class ShortTermMemory:
     def update_context(self, key, value):
         self.context[key] = value
 
-    def retrieve_context(self, key):
+    def retrieve_context(self, key: object) -> Any | None:
 
         return self.context.get(key)
 
