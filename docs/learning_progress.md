@@ -16,6 +16,8 @@
 | Day7 | Agent 架构与执行链路 | 已通过|87  |src/agent/llm_agent.py,state.py |tests/week01/test_agent_loop.py | |
 | Day8 | Agent planning与Decision | 已通过| 95|src/agent/planning.py,plan_manager.py |tests/week02/test_plan_manager.py | |
 | Day9 | Agent Executor与Plan 执行控制|已通过 | |src/agent/llm_agent_plan.py| tests/week02/test_agent_executor.py| |
-| Day10 |Agent Trace &Debugging | | |src/agent/llm_agent_plan.py,state.py|tests/week02/test_agent_trace.py | |
-| Day11 | | | || | |
+| Day10 |Agent Trace &Debugging | 已通过| |src/agent/llm_agent_plan.py,state.py|tests/week02/test_agent_trace.py | |
+| Day11 |Agent memory| 已通过|95 || src/agent/memory|tests/week02/test_agent_memory.py ||
+| Day12 |Memory Retrieval & Context Management| 已通过|95 |src/agent/memory、build_context()| src/agent/memory|tests/week02/test_agent_memory.py ||
+| Day13 |Agent Memory 与 Context 综合测试| 已通过|95 || src/agent/memory|tests/week02/test_agent_ ||
 
