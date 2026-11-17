@@ -27,9 +27,11 @@ def test_day13_01_agent_retrieve_context(env):
 
     state=agent.run("U001","帮我再次申请ORD1001的退款")
 
-    assert llm.calls[0].get("message")[-1]["context"]["order_id"] == "ORD1001"
-    assert llm.calls[0].get("message")[-1]["context"]["previous_action"] == "refund"
-    assert "unrelated_info" not in llm.calls[0].get("message")[-1]["context"]
+    msgs=[msg for msg in llm.calls[0].get("message") if msg["role"]=="memory"]
+
+    assert msgs[0]["content"]["order_id"] == "ORD1001"
+    assert msgs[0]["content"]["previous_action"] == "refund"
+    assert "unrelated_info" not in msgs[0]["content"]
 
     assert state.step_results["query_order"]["success"]==True
     assert state.step_results["query_order"]["data"]["refund_status"]=="NOT_REFUNDED"
@@ -50,4 +52,20 @@ def test_day13_02_agent_works_when_memory_is_None(env):
     assert "订单ORD1001查询成功" in state.final_response
 
 
+def test_day15_memory_writeback(env):
+    step1 = Step(step_id="step01", task="query_order", order_id="ORD1001")
+    llm = FakeLLM([Plan(steps=[step1]), text_response("订单ORD1001查询成功")])
+
+    memory = ShortTermMemory()
+    memory.context = {"user_id": "U001",
+                      "order_id": "ORD1001",
+                      "previous_action": "refund",
+                      "previous_result": "failed",
+                      "unrelated_info": "用户喜欢红色商品"}
+    agent = LLMPlanAgent(llm, env["tools"], memory=memory)
+
+    state = agent.run("U001", "帮我再次申请ORD1001的退款")
+
+    assert agent.memory.retrieve_context("previous_action")=="query_order"
+    assert agent.memory.retrieve_context("previous_result") == "success"
 

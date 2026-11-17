@@ -1,6 +1,7 @@
 from agent.llm_agent_plan import LLMPlanAgent
 from agent.planning import Step, Plan
 from tests.conftest import FakeLLM
+from utils.tool import text_response
 
 
 # Day 14
@@ -65,3 +66,31 @@ def test_01_step_failure_preserves_completed_steps(env):
 
     # 8.退款工具只调用了1次
     assert refund_tool.execute_refund.call_count==1
+
+
+def test_02_normal_all_steps_should_be_completed(env):
+    from unittest.mock import Mock
+    refund_tool= env["tools"]["execute_refund"]
+    refund_tool.execute_refund=Mock(wraps=refund_tool.execute_refund)
+
+    step1=Step(step_id="step01",task="query_order",order_id="ORD1001")
+    step2 = Step(step_id="step02", task="permission_check", order_id="ORD1001",depends_on=["step01"])
+    step3 = Step(step_id="step03", task="execute_refund", order_id="ORD1001",depends_on=["step02"])
+    llm = FakeLLM([Plan(steps=[step1,step2,step3]),text_response("订单 ORD1001 退款成功")])
+    agent = LLMPlanAgent(llm, env["tools"])
+    state = agent.run("U001", "帮我查一下订单 ORD1001并退款")
+
+    assert agent.manager.plan.status == "completed"
+
+    assert state.step_states.get("query_order")=="completed"
+    assert agent.manager.plan.steps[0].status == "completed"
+
+    # state.step_states与plan steps中状态一致
+    for step in agent.manager.plan.steps:
+        assert state.step_states[step.task] == step.status
+
+    assert refund_tool.execute_refund.call_count==1
+
+
+
+

@@ -39,8 +39,10 @@ class LLMPlanAgent(LLMToolAgent):
     def run(self,user_id,user_input) -> AgentState:
 
         state=AgentState(user_id,user_input)
-        # 1. 初始化消息上下文
-        messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_input}]
+        # 1. 初始化消息上下文--加入系统prompt
+        messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+        #  初始化消息上下文--加入history messages
         try:
             if self.memory:
                 # 获取历史消息
@@ -50,11 +52,15 @@ class LLMPlanAgent(LLMToolAgent):
                 if self.memory.context:
                     # 过滤无关信息
                     context=build_context(self.memory,["user_id","order_id","previous_action","previous_result"])
-                    messages.append({"context":context})
+                    messages.append({"role": "memory","content": context})
         except Exception:
             # Memory 异常时，不阻断 Agent 的基本执行
             pass
 
+        # 初始化消息上下文---加入用户输入
+        messages.append({"role": "user", "content": user_input})
+
+        # 2. 进行多轮对话
         for turn in range(self.max_steps):
             response=self.llm.chat(messages,tools=TOOL_SCHEMAS)
 
@@ -155,6 +161,10 @@ class LLMPlanAgent(LLMToolAgent):
                                 task=s.task,
                                 status="failed"
                             )
+                            # memory 写回操作
+                            if self.memory:
+                                self.memory.update_context("previous_action", s.task)
+                                self.memory.update_context("previous_result", "failed")
                             return self._finish(state, f"工具执行失败:{tool_result['error']}", "failed")
 
                         if s.task == "permission_check" and not tool_result.get("allowed"):
@@ -167,10 +177,20 @@ class LLMPlanAgent(LLMToolAgent):
                                 reason="permission_denied",
                                 step_id=s.step_id
                             )
+                            # memory 写回操作
+                            if self.memory:
+                                self.memory.update_context("previous_action", s.task)
+                                self.memory.update_context("previous_result", "failed")
                             return self._finish(state, f"权限校验失败:{tool_result['reason']}", "failed")
 
                         state.step_states[s.task] ="completed"
                         self.manager.mark_completed(s.step_id)
+
+                        #memory 写回操作
+                        if self.memory:
+                            self.memory.update_context("previous_action",s.task)
+                            self.memory.update_context("previous_result", "success")
+
 
                         state.add_trace(
                             "step_update",

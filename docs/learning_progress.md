@@ -19,6 +19,7 @@
 | Day10 |Agent Trace &Debugging | 已通过| |src/agent/llm_agent_plan.py,state.py|tests/week02/test_agent_trace.py | |
 | Day11 |Agent memory| 已通过|95 || src/agent/memory|tests/week02/test_agent_memory.py ||
 | Day12 |Memory Retrieval & Context Management| 已通过|95 |src/agent/memory、build_context()| src/agent/memory|tests/week02/test_agent_memory.py ||
-| Day13 |Agent Memory 与 Context 综合测试| 已通过 |85| src/agent/memory.py,llm_agent_plan.py|tests/week02/test_memory_integration ||
-| Day14 |Agent Replanning 与动态任务调整|  || src/agent/|tests/week02/ ||
+| Day13 |Agent Memory 与 Context 综合测试| 已通过 |85| src/agent/memory.py,llm_agent_plan.py|tests/week02/test_memory_integration.py ||
+| Day14 |Agent Recovery| 已通过 || src/agent/|tests/week02/test_agent_recovery.py ||
+| Day15 |Plan Failure Recovery & Replanning| 已通过 || src/agent/|tests/week02/test_agent_recovery.py ||
 
