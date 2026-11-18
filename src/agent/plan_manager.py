@@ -69,6 +69,19 @@ class PlanManager:
                 return True
         return None
 
+    def update_step_result(self, step_id: int, result):
+
+        step_map = {step.step_id: step for step in self.plan.steps}
+        # "step_id not found"
+        if step_map.get(step_id) is None:
+            return False
+
+        for step in self.plan.steps:
+            if step.step_id == step_id:
+                step.result = result
+                return True
+        return None
+
     def mark_running(self, step_id):
         self.update_step_status(step_id, "running")
 

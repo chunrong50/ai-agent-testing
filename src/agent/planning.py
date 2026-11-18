@@ -10,6 +10,8 @@ class Step:
     depends_on:list[str]=field(default_factory=list)
     status: str = "pending"
     order_id: Optional[str] = None
+    retry_count: int = 0
+    result: Optional[Any] = field(default_factory=dict)
 
 
 
@@ -19,6 +21,7 @@ class Step:
 class Plan:
     steps: list[Step] = field(default_factory=list)
     status: str = "pending"
+    plan_id: str = ""
 
 
 

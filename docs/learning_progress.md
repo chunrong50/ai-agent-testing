@@ -22,4 +22,5 @@
 | Day13 |Agent Memory 与 Context 综合测试| 已通过 |85| src/agent/memory.py,llm_agent_plan.py|tests/week02/test_memory_integration.py ||
 | Day14 |Agent Recovery| 已通过 || src/agent/|tests/week02/test_agent_recovery.py ||
 | Day15 |Plan Failure Recovery & Replanning| 已通过 || src/agent/|tests/week02/test_agent_recovery.py |受GPT 上下文大小的影响，每次来回2-3个问题后就限制输入了，导致后续的课程内容一直在重复的学习概念|
-
+| Day16 |Memory 与 Context 管理机制| 已通过 ||  | GPT 一直在提问，没有实践，开始遗忘了 |
+| Day17 |Agent Checkpoint & Persistence|  || src/agent/persistence.py|tests/week02/ | |

@@ -1,0 +1,58 @@
+{
+  "steps": [
+    {
+      "step_id": "step01",
+      "task": "query_order",
+      "depends_on": [],
+      "status": "completed",
+      "order_id": "ORD1001",
+      "retry_count": 0,
+      "result": {
+        "success": true,
+        "data": {
+          "order_id": "ORD1001",
+          "user_id": "U001",
+          "amount": 199.0,
+          "payment_status": "PAID",
+          "refund_status": "NOT_REFUNDED"
+        }
+      }
+    },
+    {
+      "step_id": "step02",
+      "task": "permission_check",
+      "depends_on": [
+        "step01"
+      ],
+      "status": "completed",
+      "order_id": "ORD1001",
+      "retry_count": 0,
+      "result": {
+        "success": true,
+        "allowed": true,
+        "user_id": "U001",
+        "order_user_id": "U001",
+        "reason": "用户有权操作该订单"
+      }
+    },
+    {
+      "step_id": "step03",
+      "task": "execute_refund",
+      "depends_on": [
+        "step02"
+      ],
+      "status": "completed",
+      "order_id": "ORD1001",
+      "retry_count": 0,
+      "result": {
+        "success": true,
+        "order_id": "ORD1001",
+        "refund_amount": 199.0,
+        "refund_status": "REFUNDED",
+        "message": "退款成功"
+      }
+    }
+  ],
+  "status": "completed",
+  "plan_id": "PLAN001"
+}

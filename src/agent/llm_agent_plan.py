@@ -1,7 +1,10 @@
 import json
 
+
+
 from agent.llm_agent import LLMToolAgent
 from agent.memory import ShortTermMemory, build_context
+from agent.persistence import JsonPersistence
 from agent.plan_manager import PlanManager
 from agent.planning import Plan
 from agent.state import AgentState
@@ -26,13 +29,26 @@ TOOL_SCHEMAS = [
 # 具有planning能力的Agent, 跟进LLM返回的plan来规划执行路径
 
 class LLMPlanAgent(LLMToolAgent):
-    def __init__(self, llm,tools,memory:ShortTermMemory=None,max_steps=5):
+    def __init__(self, llm,tools,memory:ShortTermMemory=None,max_steps=5,persistence:JsonPersistence=None):
         self.manager = PlanManager(Plan())
         self.tools = tools
         self.max_steps = max_steps
         self.memory = memory
+        self.persistence = persistence
         super().__init__(llm,tools,max_steps)
 
+    def resume(self,plan_id):
+
+        plan=self.persistence.load_checkpoint(plan_id) if self.persistence else None
+
+        if plan is None:
+            raise ValueError("Plan not found")
+        for step in plan.steps:
+            if step.status=="completed":
+                continue
+            # 从第一个未完成的 Step 开始恢复
+            return self.execute_remaining_steps(plan)
+        return plan
 
 
 
@@ -46,8 +62,7 @@ class LLMPlanAgent(LLMToolAgent):
         try:
             if self.memory:
                 # 获取历史消息
-                if self.memory.messages:
-                    messages.extend(self.memory.messages)
+                messages.extend(self.memory.messages) if self.memory.messages else None
 
                 if self.memory.context:
                     # 过滤无关信息
@@ -95,6 +110,8 @@ class LLMPlanAgent(LLMToolAgent):
                             task=s.task,
                             status="running"
                         )
+                        #工具执行前保存 checkpoint
+                        self.persistence.save_checkpoint(self.manager.plan) if self.persistence else None
 
                         executor=ToolExecutor(tools=self.tools)
 
@@ -161,6 +178,9 @@ class LLMPlanAgent(LLMToolAgent):
                                 task=s.task,
                                 status="failed"
                             )
+                            #更新步骤结果
+                            self.manager.update_step_result(s.step_id,tool_result)
+                            self.persistence.save_checkpoint(self.manager.plan) if self.persistence else None
                             # memory 写回操作
                             if self.memory:
                                 self.memory.update_context("previous_action", s.task)
@@ -177,6 +197,9 @@ class LLMPlanAgent(LLMToolAgent):
                                 reason="permission_denied",
                                 step_id=s.step_id
                             )
+                            # 更新步骤结果
+                            self.manager.update_step_result(s.step_id, tool_result)
+                            self.persistence.save_checkpoint(self.manager.plan) if self.persistence else None
                             # memory 写回操作
                             if self.memory:
                                 self.memory.update_context("previous_action", s.task)
@@ -185,6 +208,7 @@ class LLMPlanAgent(LLMToolAgent):
 
                         state.step_states[s.task] ="completed"
                         self.manager.mark_completed(s.step_id)
+
 
                         #memory 写回操作
                         if self.memory:
@@ -198,10 +222,15 @@ class LLMPlanAgent(LLMToolAgent):
                             task=s.task,
                             status="completed"
                         )
+                        # 更新步骤结果
+                        self.manager.update_step_result(s.step_id, tool_result)
+                        self.persistence.save_checkpoint(self.manager.plan) if self.persistence else None
+
 
 
             else:
                 self.manager.plan.status="completed"
+                self.persistence.save_checkpoint(self.manager.plan) if self.persistence else None
                 return self._finish(state, response.get("content"))
 
 
