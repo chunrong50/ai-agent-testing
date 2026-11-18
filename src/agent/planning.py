@@ -22,6 +22,9 @@ class Plan:
     steps: list[Step] = field(default_factory=list)
     status: str = "pending"
     plan_id: str = ""
+    user_id: str = ""
+    user_input: str = ""
+
 
 
 

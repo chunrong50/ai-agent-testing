@@ -23,7 +23,7 @@ class PlanManager:
 
 
 
-
+    # 获取下一个要执行的step
     def get_ready_steps(self) -> List[Step]:
         ready_steps = []
         steps=self.plan.steps
