@@ -25,4 +25,5 @@
 | Day16 |Memory 与 Context 管理机制| 已通过 ||  | GPT 一直在提问，没有实践，开始遗忘了 |
 | Day17 |Agent Checkpoint & Persistence| 已通过 || src/agent/persistence.py|tests/week02/test_agent_resume.py | |
 | Day18 |LLM Evaluation| 已通过 |95| src/agent/persistence.py|tests/week02/test_llm_evalution.py test_llm_judge.py | |
-| Day19 |LLM Evaluation 可靠性与一致性|  || src/agent/persistence.py|tests/week02/test_ | |
+| Day19 |LLM Evaluation 可靠性与一致性|  || src/agent/persistence.py|tests/week02/test_llm_evalution.py | |
+| Day20 |LLM Evaluation 评估体系与测试报告|  || src/agent/persistence.py|tests/week02/test_llm_evalution.py | |
