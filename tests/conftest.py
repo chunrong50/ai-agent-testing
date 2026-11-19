@@ -76,3 +76,24 @@ def env():
     refund_tool=RefundTool(order_tool.orders)
     tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
     return {"tools":tools,"orders":order_tool.orders}
+
+
+
+
+
+#负责模拟评估过程
+class FakeJudge:
+    def __init__(self,response):
+        self.response =response
+        self.calls = []
+
+    def judge(self,business_rule,order_context,agent_response):
+        # 返回{
+        #     "passed": True,
+        #     "score": 1.0,
+        #     "reason": "回答符合业务规则"
+        # }
+        # 记录收到的参数
+        self.calls.append({"business_rule":business_rule,"order_context":order_context,"agent_response":agent_response})
+
+        return self.response
