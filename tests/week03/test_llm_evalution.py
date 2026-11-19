@@ -83,10 +83,9 @@ def evaluate_reliability(
             test_case["expected"]
         )
 
-        if result["passed"]:
-            results.append(result)
+        results.append(result)
 
-    pass_count = len(results)
+    pass_count = sum(1 for result in results if result["passed"])
 
     return {
         "total": repeat,
@@ -96,24 +95,44 @@ def evaluate_reliability(
 
 
 class Agent:
-    def __init__(self, response):
-        self.response = response
+    def __init__(self, responses):
+        self.responses = list(responses)
         self.calls=[]
 
     def run(self, input):
         self.calls.append(input)
-        return self.response
+        return self.responses.pop(0)
 
 
 @pytest.mark.parametrize("test_case", [{"input":"订单A10086未支付可以退款吗？","expected":["未支付","目前不能退款"]}])
 def test_01_evaluation_reliability(test_case):
-    response = "订单尚未支付，目前不能退款。"
-    agent=Agent(response)
+    # 评估Agent的可靠性
+    responses = ["订单尚未支付，目前不能退款。",
+                 "订单尚未支付，目前不能退款。",
+                 "订单尚未支付，目前不能退款。",
+                 "订单尚未支付，目前不能退款。",
+                 "订单尚未支付，目前不能退款。"]
+    agent=Agent(responses)
     result = evaluate_reliability(agent,test_case,repeat=5)
     assert result["passed"]==5
     assert result["reliability"]==1.0
 
+    assert len(agent.calls)==5
 
+@pytest.mark.parametrize("test_case", [{"input":"订单A10086未支付可以退款吗？","expected":["未支付","目前不能退款"]}])
+def test_02_evaluation_reliability(test_case):
+    # 评估Agent的一致性
+    responses = ["订单尚未支付，目前不能退款。",
+                 "订单尚未支付，目前不能退款。",
+                 "订单可以退款",
+                 "订单尚未支付，目前不能退款。",
+                 "订单可以退款。"]
+    agent=Agent(responses)
+    result = evaluate_reliability(agent,test_case,repeat=5)
+    assert result["passed"]==3
+    assert result["reliability"]==0.6
+
+    assert len(agent.calls)==5
 
 
 
