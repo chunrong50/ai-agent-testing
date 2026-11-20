@@ -28,4 +28,4 @@
 | Day19 |LLM Evaluation 可靠性与一致性|已通过  || src/agent/persistence.py|tests/week03/test_llm_evalution.py | |
 | Day20 |LLM Evaluation 评估体系与测试报告|已通过|| src/agent/persistence.py|tests/week03/test_llm_evalution.py | |
 | Day21 |AI Agent 自动化测试框架设计与实战|已通过 || src/agent/persistence.py|tests/week03/test_agent_factory.py , conftest.py 下的agent_factory（） | |
-| Day21 |AI Agent 自动化测试框架设计与实战|已通过 || src/agent/persistence.py|tests/week03/test_agent_factory.py , conftest.py 下的agent_factory（） | |
+| Day22 |AI Agent 自动化测试框架设计与实战|已通过 || src/agent/persistence.py|tests/week03/test_agent_factory.py , conftest.py 下的agent_factory（） | |
