@@ -24,7 +24,8 @@
 | Day15 |Plan Failure Recovery & Replanning| 已通过 || src/agent/|tests/week02/test_agent_recovery.py |受GPT 上下文大小的影响，每次来回2-3个问题后就限制输入了，导致后续的课程内容一直在重复的学习概念|
 | Day16 |Memory 与 Context 管理机制| 已通过 ||  | GPT 一直在提问，没有实践，开始遗忘了 |
 | Day17 |Agent Checkpoint & Persistence| 已通过 || src/agent/persistence.py|tests/week02/test_agent_resume.py | |
-| Day18 |LLM Evaluation| 已通过 |95| src/agent/persistence.py|tests/week02/test_llm_evalution.py test_llm_judge.py | |
-| Day19 |LLM Evaluation 可靠性与一致性|已通过  || src/agent/persistence.py|tests/week02/test_llm_evalution.py | |
-| Day20 |LLM Evaluation 评估体系与测试报告|已通过  || src/agent/persistence.py|tests/week02/test_llm_evalution.py | |
-| Day20 |AI Agent 自动化测试框架设计与实战|  || src/agent/persistence.py|tests/week02 | |
+| Day18 |LLM Evaluation| 已通过 |95| src/agent/persistence.py|tests/week03/test_llm_evalution.py test_llm_judge.py | |
+| Day19 |LLM Evaluation 可靠性与一致性|已通过  || src/agent/persistence.py|tests/week03/test_llm_evalution.py | |
+| Day20 |LLM Evaluation 评估体系与测试报告|已通过|| src/agent/persistence.py|tests/week03/test_llm_evalution.py | |
+| Day21 |AI Agent 自动化测试框架设计与实战|已通过 || src/agent/persistence.py|tests/week03/test_agent_factory.py , conftest.py 下的agent_factory（） | |
+| Day21 |AI Agent 自动化测试框架设计与实战|已通过 || src/agent/persistence.py|tests/week03/test_agent_factory.py , conftest.py 下的agent_factory（） | |

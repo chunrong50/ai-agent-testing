@@ -11,8 +11,7 @@
 import json
 
 from agent.llm_agent import LLMToolAgent
-from tests.conftest import FakeLLM
-from utils.tool import tool_response, text_response
+from tests.conftest import FakeLLM, tool_response, text_response
 
 
 def test_tc01_normal_turns(env):

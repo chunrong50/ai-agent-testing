@@ -1,9 +1,7 @@
 from agent.llm_agent_plan import LLMPlanAgent
 from agent.persistence import JsonPersistence
 from agent.planning import Step, Plan
-from main import permission_tool, refund_tool
-from tests.conftest import FakeLLM
-from utils.tool import text_response
+from tests.conftest import FakeLLM,text_response
 
 
 def test_day17_01_checkpoint_persistence(env):

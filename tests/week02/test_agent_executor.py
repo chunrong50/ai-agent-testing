@@ -1,8 +1,6 @@
 from agent.llm_agent_plan import LLMPlanAgent
 from agent.planning import Step, Plan
-from main import refund_tool
-from tests.conftest import FakeLLM
-from utils.tool import text_response
+from tests.conftest import FakeLLM, text_response, TimeoutRetryOrderTool
 
 '''
 Day 9 保留以下 5 个测试：
@@ -17,10 +15,10 @@ TC05	业务校验失败	是否终止后续退款和通知步骤
 
 
 
-def test_01_step_success_and_status_should_be_completed(env):
+def test_01_step_success_and_status_should_be_completed(agent_factory):
     step1=Step(step_id="step01",task="query_order",order_id="ORD1001")
-    llm = FakeLLM([Plan(steps=[step1]),text_response("订单 ORD1001 查询成功，订单已支付199.00")])
-    agent = LLMPlanAgent(llm, env["tools"])
+    llm_responses=[Plan(steps=[step1]),text_response("订单 ORD1001 查询成功，订单已支付199.00")]
+    agent, llm, env = agent_factory(llm_responses=llm_responses)
     state = agent.run("U001", "帮我查一下订单 ORD1001")
 
     assert state.step_states.get("query_order")=="completed"
@@ -31,18 +29,20 @@ def test_01_step_success_and_status_should_be_completed(env):
 
 
 
-def test_02_step_failed_and_break_next_step_run(env):
+def test_02_step_failed_and_break_next_step_run(agent_factory):
     # 订单不存在，会终止后续step的执行
+    step1 = Step(step_id="step01", task="query_order", order_id="ORD1008")
+    step2 = Step(step_id="step02", task="permission_check", order_id="ORD1008")
+    llm_responses = [Plan(steps=[step1, step2])]
+
+    agent, llm, env = agent_factory(llm_responses=llm_responses)
+
     from unittest.mock import Mock
     query_order = env["tools"]["query_order"]
     permission_check = env["tools"]["permission_check"]
     query_order.query_order = Mock(wraps=query_order.query_order)
     permission_check.check_permission = Mock(wraps=permission_check.check_permission)
 
-    step1 = Step(step_id="step01", task="query_order", order_id="ORD1008")
-    step2 = Step(step_id="step02", task="permission_check", order_id="ORD1008")
-    llm = FakeLLM([Plan(steps=[step1,step2])])
-    agent = LLMPlanAgent(llm, env["tools"])
     state = agent.run("U001", "帮我查一下订单 ORD1008")
 
     assert state.step_states.get("query_order") == "failed"
@@ -55,22 +55,23 @@ def test_02_step_failed_and_break_next_step_run(env):
 
 
 
-def test_03_completed_step_should_not_execute_again(env):
+def test_03_completed_step_should_not_execute_again(agent_factory):
     """
     验证：已经完成的步骤，在 Agent 恢复执行时不应该重复执行。
     """
+
+
+    step1 = Step(step_id="step01", task="query_order", status="completed",order_id="ORD1001")
+    step2 = Step(step_id="step02", task="permission_check", depends_on=["step01"],order_id="ORD1001")
+    llm_responses=[Plan(steps=[step1, step2]),text_response("订单 ORD1001 查询成功，订单已支付199.00")]
+    agent, llm, env = agent_factory(llm_responses=llm_responses)
+
     from unittest.mock import Mock
     query_order = env["tools"]["query_order"]
     permission_check = env["tools"]["permission_check"]
     query_order.query_order = Mock(wraps=query_order.query_order)
     permission_check.check_permission = Mock(wraps=permission_check.check_permission)
 
-    step1 = Step(step_id="step01", task="query_order", status="completed",order_id="ORD1001")
-    step2 = Step(step_id="step02", task="permission_check", depends_on=["step01"],order_id="ORD1001")
-
-
-    llm = FakeLLM([Plan(steps=[step1, step2]),text_response("订单 ORD1001 查询成功，订单已支付199.00")])
-    agent = LLMPlanAgent(llm, env["tools"])
     state = agent.run("U001", "帮我查订单 ORD1001")
 
     assert state.step_states.get("query_order") is None
@@ -86,25 +87,28 @@ def test_03_completed_step_should_not_execute_again(env):
 
 
 
-def test_04_timeout_should_retry_and_complete_step(env_timeout_retry_order_tool):
+def test_04_timeout_should_retry_and_complete_step(agent_factory):
      """
     验证：
      某个步骤执行失败后，Agent 应该根据失败原因
      决定重试、终止还是重新规划。
       下面验证技术异常发生超时，进行重试，重试后成功
      """
-     from unittest.mock import Mock
-     query_order = env_timeout_retry_order_tool["tools"]["query_order"]
-     permission_check = env_timeout_retry_order_tool["tools"]["permission_check"]
-
-     query_order.query_order = Mock(wraps=query_order.query_order)
-     permission_check.check_permission = Mock(wraps=permission_check.check_permission)
 
      step1 = Step(step_id="step01", task="query_order", order_id="ORD1001")
      step2 = Step(step_id="step02", task="permission_check", depends_on=["step01"], order_id="ORD1001")
-     llm = FakeLLM([Plan(steps=[step1, step2]), text_response("订单ORD1001查询成功")])
 
-     agent = LLMPlanAgent(llm, env_timeout_retry_order_tool["tools"])
+     llm_responses =[Plan(steps=[step1, step2]), text_response("订单ORD1001查询成功")]
+
+     agent, llm, env = agent_factory(llm_responses=llm_responses,order_tool=TimeoutRetryOrderTool(retry=1))
+
+
+     from unittest.mock import Mock
+     query_order = env["tools"]["query_order"]
+     permission_check = env["tools"]["permission_check"]
+     query_order.query_order = Mock(wraps=query_order.query_order)
+     permission_check.check_permission = Mock(wraps=permission_check.check_permission)
+
      state = agent.run("U001", "帮我查订单 ORD1001")
 
      assert state.step_states.get("query_order")=="completed"

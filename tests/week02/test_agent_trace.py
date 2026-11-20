@@ -1,7 +1,6 @@
 from agent.llm_agent_plan import LLMPlanAgent
 from agent.planning import Step, Plan
-from tests.conftest import FakeLLM
-from utils.tool import text_response
+from tests.conftest import FakeLLM, text_response, TimeoutRetryOrderTool
 
 
 def test_01_normal_trace(env):
@@ -84,22 +83,24 @@ def test_02_trace_when_permission_check_not_allowed(env):
 
 
 
-def test_03_trace_when_timeout_retry(env_timeout_retry_order_tool):
+def test_03_trace_when_timeout_retry(agent_factory):
      """
     验证：trace能正常记录重试场景
      """
+
+     step1 = Step(step_id="step01", task="query_order", order_id="ORD1001")
+     step2 = Step(step_id="step02", task="permission_check", depends_on=["step01"], order_id="ORD1001")
+
+     llm_responses =[Plan(steps=[step1, step2]), text_response("订单ORD1001查询成功")]
+     agent, llm, env = agent_factory(llm_responses=llm_responses,order_tool=TimeoutRetryOrderTool(retry=1))
+
      from unittest.mock import Mock
-     query_order = env_timeout_retry_order_tool["tools"]["query_order"]
-     permission_check = env_timeout_retry_order_tool["tools"]["permission_check"]
+     query_order = env["tools"]["query_order"]
+     permission_check = env["tools"]["permission_check"]
 
      query_order.query_order = Mock(wraps=query_order.query_order)
      permission_check.check_permission = Mock(wraps=permission_check.check_permission)
 
-     step1 = Step(step_id="step01", task="query_order", order_id="ORD1001")
-     step2 = Step(step_id="step02", task="permission_check", depends_on=["step01"], order_id="ORD1001")
-     llm = FakeLLM([Plan(steps=[step1, step2]), text_response("订单ORD1001查询成功")])
-
-     agent = LLMPlanAgent(llm, env_timeout_retry_order_tool["tools"])
      state = agent.run("U001", "帮我查订单 ORD1001")
 
      assert state.step_states.get("query_order")=="completed"

@@ -9,8 +9,8 @@
 from agent.llm_agent_plan import LLMPlanAgent
 from agent.memory import ShortTermMemory
 from agent.planning import Plan, Step
-from tests.conftest import FakeLLM
-from utils.tool import text_response
+from tests.conftest import FakeLLM, text_response
+
 
 # Memory Injection
 def test_day13_01_agent_retrieve_context(env):

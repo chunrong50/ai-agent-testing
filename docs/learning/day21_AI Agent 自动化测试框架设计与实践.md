@@ -215,3 +215,81 @@ function
 我会继续按照之前的导师式学习方式：你先回答、提交代码和 pytest 结果，我再逐项评审、评分，通过验收后进入下一节。
 
 **今天先完成 Day 21-01，不要急着写完整测试框架。**
+
+对，你说得对。Day 21 不应该再让你从零学习和编写 conftest.py。
+
+你之前的项目已经有统一的测试环境设计，而且我们之前的 Day 4–Day 20 也一直在使用这套测试基础设施。
+
+如果继续讲解如何创建 FakeLLM、Agent、Memory 等公共对象，就会变成重复学习。
+
+我们应该调整 Day 21 的学习重点：
+
+不是重新学习 Pytest Fixtures，而是评估现有测试框架是否满足真实 AI Agent 项目的自动化测试需求，并在现有基础上补齐能力。
+
+我已经检查了你 GitHub main 分支当前的 tests/conftest.py。这次以仓库实际代码为准。查看 conftest.py
+一、你已经实现的内容
+现有实现	评估
+FakeLLM	已实现
+FakeJudge	已实现
+TimeoutOrderTool	已实现
+TimeoutRetryOrderTool	已实现
+env Fixture	已实现
+env_timeout_order_tool	已实现
+
+
+说明你已经掌握了基础的测试环境管理、Fake 对象和异常工具模拟。
+二、现有框架还值得改进的地方
+我发现三个值得进一步研究的问题：
+
+1. 测试环境还没有完全统一
+
+当前 env 主要负责创建三个 Tool，并没有统一提供 FakeLLM 和 Agent。
+
+这意味着不同测试文件可能还需要自己初始化 Agent 和 FakeLLM。
+
+2. Fixture 存在一定重复
+
+例如：
+- env_timeout_order_tool
+- env
+三个 Fixture 都重复创建 PermissionTool、RefundTool 和 tools 字典。
+
+后续可以研究如何通过 Fixture 组合减少重复。
+
+3. 测试环境与测试场景的边界
+
+例如 TimeoutOrderTool 是一种特殊测试工具，它应该作为测试基础设施存在，而不是混入正常业务 Tool。
+
+需要理解如何管理不同类型的测试替身。
+
+三、重新确定 Day 21 的学习内容
+调整后的学习方向
+今天不再学习 Fixture 基础知识，而是学习：
+
+Day 21：AI Agent 自动化测试框架的设计与优化
+
+今天的核心任务是：
+1. 分析现有 conftest.py 的设计。
+2. 理解 Fixture 组合与依赖注入。
+3. 研究如何统一 Agent、FakeLLM、Tools 的初始化。
+4. 理解正常测试环境与异常测试环境的管理方式。
+不要求今天全部重构，也不为了增加代码量而增加测试用例。
+Day 21-01：先回答一个实际问题
+你目前的 env：
+@pytest.fixturedef env():    
+order_tool = OrderTool()   
+permission_tool = PermissionTool()    
+refund_tool = RefundTool(order_tool.orders)    tools = {        "query_order": order_tool,        "permission_check": permission_tool,        "execute_refund": refund_tool    }    return {        "tools": tools,        "orders": order_tool.orders    }
+
+
+
+假设未来有 50 个 Agent 测试用例，每个测试都需要：
+- FakeLLM
+- LLMPlanAgent
+- 三个业务 Tool
+- AgentState
+你认为应该如何设计 Fixture，才能让测试用例只需要关注测试场景，而不需要重复初始化这些对象？
+
+先说你的设计思路，不用写代码。
+
+我会根据你的回答继续讲解，而不是再让你重复已经掌握的内容。
