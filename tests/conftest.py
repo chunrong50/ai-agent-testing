@@ -8,8 +8,6 @@ from tools.permission_tool import PermissionTool
 from tools.refund_tool import RefundTool
 
 
-
-
 class FakeLLM:
 
     def __init__(self,responses):
@@ -54,8 +52,6 @@ def env_timeout_retry_order_tool():
 
 
 
-
-
 @pytest.fixture
 def env_timeout_order_tool():
     order_tool=TimeoutOrderTool()
@@ -67,8 +63,6 @@ def env_timeout_order_tool():
 
 
 
-
-
 @pytest.fixture
 def env():
     order_tool=OrderTool()
@@ -76,8 +70,6 @@ def env():
     refund_tool=RefundTool(order_tool.orders)
     tools={"query_order":order_tool,"permission_check":permission_tool,"execute_refund":refund_tool}
     return {"tools":tools,"orders":order_tool.orders}
-
-
 
 
 
