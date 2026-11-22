@@ -194,3 +194,5 @@ Day 40 完成时，应该具备：
 	Day 35–36	回归测试 / CI	自动化交付
 	Day 37–38	安全 / 性能	项目级质量保障
 	Day 39–40	电商支付 Agent 项目	综合项目交付与验收
+
+https://github.com/Mohamad.Hachem/LangChain_Agent_Evaluation_System
