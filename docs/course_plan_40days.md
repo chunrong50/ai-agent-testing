@@ -196,3 +196,13 @@ Day 40 完成时，应该具备：
 	Day 39–40	电商支付 Agent 项目	综合项目交付与验收
 
 https://github.com/Mohamad.Hachem/LangChain_Agent_Evaluation_System
+
+
+九、P0 副线（2026-11-26 新增 ,来自Claude AI）
+- 目标：AI 产品 / 外包测试岗，先入行
+- 依据：30 份上海 JD 统计（LLM 评测 97%、Agent 67%、自动化 63%）
+- 模块：M1 真实 LLM → M2 评测体系+多模态 → M3 Agent → M4 Bad Case
+        → M5 回归+CI → M6 性能 → M7 方案+包装+训练认知 → M8 RAG → M9 Judge
+- 与主线关系：并行（方案 B），40 天路线不变
+- 当前副线进度：M1 未开始
+- 规则：主线优先；副线只做产出物；两条线进度分开记录

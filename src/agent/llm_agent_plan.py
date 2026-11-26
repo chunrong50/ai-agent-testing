@@ -1,7 +1,4 @@
 import json
-from copy import deepcopy
-
-from anyio.lowlevel import checkpoint
 
 from agent.llm_agent import LLMToolAgent
 from agent.memory import ShortTermMemory, build_context
@@ -27,15 +24,16 @@ TOOL_SCHEMAS = [
 ]
 
 
-# 具有planning能力的Agent, 跟进LLM返回的plan来规划执行路径
+# 具有planning能力的Agent, 跟进LLM返回的plan来规划执行路径, 并加入了RAG 检索能力
 
 class LLMPlanAgent(LLMToolAgent):
-    def __init__(self, llm,tools,memory:ShortTermMemory=None,max_steps=5,max_tool_calls:int=5,persistence:JsonPersistence=None):
-        self.manager = PlanManager(Plan())
-        self.tools = tools
-        self.max_steps = max_steps
-        self.memory = memory
-        self.persistence = persistence
+    def __init__(self, llm,tools,memory:ShortTermMemory=None,max_steps=5,max_tool_calls:int=5,persistence:JsonPersistence=None,retriever=None):
+        self.manager = PlanManager(Plan()) # Agent的任务规划管理
+        self.tools = tools                # agent 调用的Function calling
+        self.max_steps = max_steps        # 最大对话执行轮数
+        self.memory = memory              # 短期记忆，内存中
+        self.persistence = persistence   #记忆存储，写入本地文档
+        self.retriever = retriever      # RAG 检索功能
         super().__init__(llm,tools,max_steps,max_tool_calls)
 
     def resume(self,plan_id,task_id):
@@ -201,6 +199,14 @@ class LLMPlanAgent(LLMToolAgent):
         return state
 
 
+    def build_rag_context(self,docs):
+        reference = "参考资料："
+
+        for i, doc in enumerate(docs, start=1):
+            reference += f"\n{i}. {doc}"
+
+        return reference
+
     def run(self,user_id,user_input) -> AgentState:
 
         state=AgentState(user_id,user_input)
@@ -221,11 +227,26 @@ class LLMPlanAgent(LLMToolAgent):
             # Memory 异常时，不阻断 Agent 的基本执行
             pass
 
+        # 如果有检索内容，把检索到的内容也加入用户输入中
+        if self.retriever:
+            # 获取RAG检索到的序号
+            retrieve_num=self.retriever.retrieve(query=user_input,top_k=3)
+            # 获取RAG检索到的序号对应的文本内容
+            retriever_doc = [self.retriever.documents.get(x) for x in retrieve_num]
+
+            # RAG检索到的参考内容
+            reference=self.build_rag_context(retriever_doc)
+
+            # 更新user_input,加入参考内容
+            user_input=f"用户问题：{user_input}。{reference}"
+
+
         # 初始化消息上下文---加入用户输入
         messages.append({"role": "user", "content": user_input})
 
         # 2. 进行多轮对话
         for turn in range(self.max_steps):
+
             response=self.llm.chat(messages,tools=TOOL_SCHEMAS)
 
             if not response:

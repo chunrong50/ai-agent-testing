@@ -48,6 +48,7 @@ def text_response(content):
     # 模拟LLM的文本响应结果
     return {"tool_calls": [], "content": content}
 
+
 def tool_response(name,order_id):
     # 模拟LLM的响应结果中包含tool_calls，工具调用
 
@@ -110,7 +111,7 @@ def env():
 
 @pytest.fixture
 def agent_factory():
-    def create_agent(llm_responses,order_tool=None,permission_tool=None,refund_tool=None):
+    def create_agent(llm_responses,order_tool=None,permission_tool=None,refund_tool=None,retriever=None):
         # 1. 初始化业务工具
         if order_tool is None:
             order_tool = OrderTool()
@@ -124,7 +125,7 @@ def agent_factory():
         llm=FakeLLM(llm_responses)
 
         # 3. 初始化 Agent
-        agent=LLMPlanAgent(llm,env["tools"])
+        agent=LLMPlanAgent(llm,env["tools"],retriever=retriever)
 
         # 4. 返回 Agent
         return agent,llm,env

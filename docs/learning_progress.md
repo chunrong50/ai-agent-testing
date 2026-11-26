@@ -28,4 +28,6 @@
 | Day19 |LLM Evaluation 可靠性与一致性|已通过  || src/agent/persistence.py|tests/week03/test_llm_evalution.py | |
 | Day20 |LLM Evaluation 评估体系与测试报告|已通过|| src/agent/persistence.py|tests/week03/test_llm_evalution.py | |
 | Day21 |AI Agent 自动化测试框架设计与实战|已通过 || src/agent/persistence.py|tests/week03/test_agent_factory.py , conftest.py 下的agent_factory（） | |
-| Day22 |MCP 协议与工具集成测试| || src/mcp/client.py,server.py|tests/week03/test_mcp_client.py | |
+| Day22 |MCP 协议与工具集成测试|已通过 || src/mcp/client.py,server.py|tests/week03/test_mcp_client.py | |
+| Day23 |RAG 测试|已通过 || src/mcp/client.py,server.py|tests/week03/test_rag_e2e.py | |
+| Day24 |RAG深入测试，Ranker,知识库更新，幻觉分析|已通过 || src/mcp/client.py,server.py|tests/week03/ | |
