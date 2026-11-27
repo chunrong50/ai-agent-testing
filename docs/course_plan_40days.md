@@ -199,10 +199,22 @@ https://github.com/Mohamad.Hachem/LangChain_Agent_Evaluation_System
 
 
 九、P0 副线（2026-11-26 新增 ,来自Claude AI）
-- 目标：AI 产品 / 外包测试岗，先入行
+- 目标：AI 产品 / Agent 测试岗，先入行
 - 依据：30 份上海 JD 统计（LLM 评测 97%、Agent 67%、自动化 63%）
 - 模块：M1 真实 LLM → M2 评测体系+多模态 → M3 Agent → M4 Bad Case
         → M5 回归+CI → M6 性能 → M7 方案+包装+训练认知 → M8 RAG → M9 Judge
 - 与主线关系：并行（方案 B），40 天路线不变
 - 当前副线进度：M1 未开始
 - 规则：主线优先；副线只做产出物；两条线进度分开记录
+
+二、模块总表
+模块	主题	                                   天数	对应 JD	                   核心产出物
+M1	真实 LLM、非确定性、Prompt 基础	                2	 97%、13%	             RealLLM、--llm=fake|real、稳定性报告
+M2	评测体系、评测集、能力边界、数据分析、多模态	4	 97%、53%、53%、37%	  评测集 ≥60 条、多模态 ≥20 条、能力边界报告
+M3	Agent 真实环境测试	                            2.5	 67%	               退款 Agent、轨迹用例 ≥20 条
+M4	Bad Case 归因闭环（含多轮）                    	2	47%、30%	               BC 案例 ≥8 个、归因分布表
+M5	自动化回归 + CI	                               1.5	63%、17%	               回归套件、基线对比、CI 流水线
+M6	性能与稳定性	                                1.5	43%	                         并发测试、P50/P95 报告
+M7	测试方案 + 交付物 + 面试包装 + 训练认知	         2	47%、10%	            测试方案、测试报告、面试包、README
+M8	RAG 精简版                                      1	7%	                      Chroma 更新测试、Recall@K/MRR
+M9	LLM-as-Judge	                                1	17%	                         Judge 与人工一致率

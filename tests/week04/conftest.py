@@ -11,8 +11,30 @@ documents = {
 # fake RAG检索工具
 class FakeRetriever:
     def __init__(self,documents,args):
-        self.documents = documents
+        self.docs = documents
         self.results = list(args)
+
+    def add(self, doc_id, text):
+        self.docs[doc_id] = text
+
+    def update(self, doc_id, text):
+        if doc_id not in self.docs:
+            raise KeyError(doc_id)
+        self.docs[doc_id] = text
+
+    def delete(self, doc_id):
+        self.docs.pop(doc_id, None)
+
+    # def retrieve(self, query, top_k=3):
+    #     # 简单规则：统计 query 中的词在文档里出现的数量
+    #     keywords = [w for w in ["退款", "期限", "7天", "15天", "无理由","已支付"] if w in query]
+    #     scored = []
+    #     for doc_id, text in self.docs.items():
+    #         score = sum(1 for w in keywords if w in text)
+    #         if score > 0:
+    #             scored.append((doc_id, score))
+    #     scored.sort(key=lambda x: x[1], reverse=True)
+    #     return [doc_id for doc_id, _ in scored[:top_k]]
 
     def retrieve(self,query,top_k=3):
         return self.results[:top_k]
@@ -26,6 +48,8 @@ class FakeReranker:
 
     def rerank(self, query, top_k=3):
         return self.results[:top_k]
+
+
 
 
 

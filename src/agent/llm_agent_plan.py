@@ -232,7 +232,7 @@ class LLMPlanAgent(LLMToolAgent):
             # 获取RAG检索到的序号
             retrieve_num=self.retriever.retrieve(query=user_input,top_k=3)
             # 获取RAG检索到的序号对应的文本内容
-            retriever_doc = [self.retriever.documents.get(x) for x in retrieve_num]
+            retriever_doc = [self.retriever.docs.get(x) for x in retrieve_num]
 
             # RAG检索到的参考内容
             reference=self.build_rag_context(retriever_doc)

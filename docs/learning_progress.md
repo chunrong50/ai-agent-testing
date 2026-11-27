@@ -31,3 +31,6 @@
 | Day22 |MCP 协议与工具集成测试|已通过 || src/mcp/client.py,server.py|tests/week03/test_mcp_client.py | |
 | Day23 |RAG 测试|已通过 || src/mcp/client.py,server.py|tests/week03/test_rag_e2e.py | |
 | Day24 |RAG深入测试，Ranker,知识库更新，幻觉分析| || src/mcp/client.py,server.py|tests/week03/ | 2026.11.27 项目中加入了真实LLM 的接入，以及mini_rag 的实现，conftest.py中加入langChain API ,def llm_openai(); src/llm/llm_cli.py中加入了OpenAI API|
+
+
+
