@@ -38,7 +38,7 @@ def test_prompt_contains_business_rules(system_prompt,rules):
     assert rules in system_prompt
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def get_json_cases():
     with open(CASES_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)

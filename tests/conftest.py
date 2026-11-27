@@ -1,8 +1,12 @@
 import copy
+import os
 from copy import deepcopy
 from typing import Optional
 
 import pytest
+from dotenv import load_dotenv
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 
 from agent.llm_agent_plan import LLMPlanAgent
 from tools.order_tool import OrderTool
@@ -78,6 +82,43 @@ def tool_response_exception(name, order_id):
 }
 
 
+
+@pytest.fixture
+def llm_openai():
+    # 1. 加载环境变量
+    load_dotenv()
+
+    # 模型初始化
+    llm = ChatOpenAI(
+        model=os.getenv("OPENAI_MODEL"),  # 替换为你实际使用的模型
+        temperature=0.1,  # 温度拉低，让大模型严格遵照文档，减少幻觉
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL")
+    )
+    return llm
+
+
+@pytest.fixture
+def prompt():
+    # 7.
+    # 编写带强约束的系统提示词（Prompt Template）
+    def build_prompt(system_prompt=None):
+        system_prompt = (
+            "你是一个严谨的企业助手。\n"
+            "请根据以下检索到的上下文资料来回答用户的问题。\n"
+            "如果你不知道答案，或者资料中没有提及，请直接回答“根据已知信息无法回答”，绝对不允许自行编造。\n\n"
+            "上下文资料:\n{context}"
+        ) if not system_prompt else (f"{system_prompt}""上下文资料：\n{context}")
+
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ])
+
+        return prompt
+
+    return build_prompt
 
 
 

@@ -88,26 +88,3 @@ def test_question_passed_to_model():
     assert "A10086" in model.received_question
 
 
-# def test_model_get_question():
-#     # TC0010 验证 LLMClient把用户输入传给模型，模型收到的输入与源数据不一致
-#     model = SpyModel2()
-#     client = LLMClient(model)
-#
-#     question = "订单A10086支付成功了吗？"
-#
-#     client.ask(question)
-#     assert model.received_question != question
-
-# def test_agent_must_query_order(client):
-#
-#     result = client.ask("我的订单 A10086 支付成功了吗？")
-#     mock_order_tool=MockOrderTool("success")
-#
-#     # 验证工具是否被调用
-#     assert mock_order_tool.call_count == 1
-#
-#     # 验证订单号是否正确
-#     assert mock_order_tool.called_order_id == "A10086"
-#
-#     # 验证回答不能凭空宣称支付成功
-#     assert "支付成功" not in result

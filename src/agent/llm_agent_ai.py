@@ -53,7 +53,6 @@ class ToolCallingLLM(Protocol):
 
 class OpenAICompatibleLLM:
     """真实模型适配器（OpenAI 兼容接口：OpenAI / DeepSeek / 通义千问等），仅 Smoke Test 使用。
-
     环境变量：LLM_API_KEY（必需）、LLM_BASE_URL、LLM_MODEL
     """
 
@@ -61,9 +60,9 @@ class OpenAICompatibleLLM:
                  base_url: Optional[str] = None):
         from openai import OpenAI  # 延迟导入，单元测试不需要安装 openai
 
-        self.client = OpenAI(api_key=api_key or os.environ["DEEPSEEK_API_KEY"],
-                             base_url=base_url or os.getenv("DEEPSEEK_BASE_URL"))
-        self.model = model or os.getenv("DEEPSEEK_MODEL", "gpt-4o-mini")
+        self.client = OpenAI(api_key=api_key or os.environ["OPENAI_API_KEY"], # 使用的是qianwen AI
+                             base_url=base_url or os.getenv("OPENAI_BASE_URL"))
+        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
     def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> LLMResponse:
         kwargs: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": 0}

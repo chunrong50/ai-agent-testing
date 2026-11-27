@@ -242,7 +242,7 @@ def test_llm_exception_is_handled(env):
 from dotenv import load_dotenv
 load_dotenv()
 # ============================ Smoke Test（真实 LLM）============================
-@pytest.mark.skipif(not os.getenv("LLM_API_KEY"), reason="需要设置 LLM_API_KEY")     #真实调用时使用：DEEPSEEK_API_KEY
+@pytest.mark.skipif(not os.getenv("LLM_API_KEY"), reason="需要设置 LLM_API_KEY")     #真实调用时修改LLM_API_KEY->DEEPSEEK_API_KEY or OPENAI_API_KEY
 def test_smoke_real_llm_selects_query_order(env):
     agent = LLMAgent(OpenAICompatibleLLM(), env["tools"])
     state = agent.run("U001", "帮我查一下订单 ORD1001 的状态")
