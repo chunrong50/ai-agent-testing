@@ -54,3 +54,4 @@ def test_03_rag_answer_faithfulness(agent_factory):
 
     # 9. 验证 Faithfulness == 0.5
     assert result == 0.50
+

@@ -63,6 +63,33 @@ def test_02_context_passed_to_llm(agent_factory):
 
     assert reference in result
 
+def test_03_knowledge_update():
 
-def test_03_rag_answer_faithfulness():
-    pass
+    # 1. 准备文档
+    question = "已支付订单如何申请退款"
+
+    # 2. 初始化 FakeRetriever RAG检索功能
+    retriever = FakeRetriever(documents, ["D002", "D003"])
+
+    # 3. 保存旧知识，并更新知识库
+    old_text=documents["D002"]
+
+    new_text="订单支付成功后，符合条件可以申请退款,且需要在7个工作日内"
+    retriever.update("D002",new_text)
+
+    # 4. 执行 Retrieval
+    result=retriever.retrieve(question)
+
+    # 5. 验证知识库更新
+    assert retriever.docs["D002"] == new_text
+    assert retriever.docs["D002"] != old_text
+
+    # 6. 验证新知识能够被检索
+    assert "D002" in result
+
+    # 7. 验证检索到的是新知识，而不是旧知识
+    retrieved_contents = [retriever.docs[doc_id] for doc_id in result]
+
+    assert new_text in retrieved_contents
+    assert old_text not in retrieved_contents
+
