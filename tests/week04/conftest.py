@@ -7,6 +7,31 @@ documents = {
 }
 
 
+class FakeStorage:
+    def __init__(self,documents,version):
+        self.docs = documents
+        self.version = version
+
+    def get_version(self):
+        return self.version
+
+    def update_version(self, new_version):
+        self.version=new_version
+        return self.version
+
+
+class FakeVectorDB:
+    def __init__(self, documents, version):
+        self.docs = documents
+        self.version = version
+
+    def get_version(self):
+        return self.version
+
+    def update_version(self, new_version):
+        self.version=new_version
+        return self.version
+
 
 # fake RAG检索工具
 class FakeRetriever:
